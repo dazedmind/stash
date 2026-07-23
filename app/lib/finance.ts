@@ -1,4 +1,4 @@
-export type CategoryTag = "Savings" | "Liabilities" | "Expenses";
+export type CategoryTag = "Savings" | "Liabilities" | "Expenses" | string;
 
 export interface SubCategory {
   id: string;
@@ -7,6 +7,7 @@ export interface SubCategory {
   digital: number;
   cash: number;
   allocated: number;
+  isHidden?: boolean;
 }
 
 export interface MainCategory {
@@ -14,44 +15,42 @@ export interface MainCategory {
   name: string;
   tag: CategoryTag;
   percentage: number;
+  icon?: string;
   subcategories: SubCategory[];
 }
 
-export const DEFAULT_ALLOCATION_RULE: Record<CategoryTag, number> = {
+export const DEFAULT_ALLOCATION_RULE: Record<string, number> = {
   Savings: 30,
   Liabilities: 30,
   Expenses: 40,
 };
 
-export function buildInitialMainCategories(income = 0): MainCategory[] {
-  // If income provided, calculate base, else use sensible default mock values
-  const safeIncome = Number.isFinite(income) && income > 0 ? income : 50000;
-  const savingsBudget = Math.round(safeIncome * 0.3);
-  const liabilitiesBudget = Math.round(safeIncome * 0.3);
-  const expensesBudget = Math.round(safeIncome * 0.4);
-
+export function buildInitialMainCategories(): MainCategory[] {
   return [
     {
       id: "savings",
       name: "Savings",
       tag: "Savings",
       percentage: 30,
+      icon: "piggy",
       subcategories: [
         {
           id: "savings-needs",
           categoryId: "savings",
           name: "Needs",
-          digital: Math.round(savingsBudget * 0.65),
-          cash: 1000,
-          allocated: Math.round(savingsBudget * 0.65) + 1000,
+          digital: 0,
+          cash: 0,
+          allocated: 0,
+          isHidden: false,
         },
         {
           id: "savings-wants",
           categoryId: "savings",
           name: "Wants",
-          digital: Math.round(savingsBudget * 0.35) - 1000,
+          digital: 0,
           cash: 0,
-          allocated: Math.round(savingsBudget * 0.35) - 1000,
+          allocated: 0,
+          isHidden: false,
         },
       ],
     },
@@ -60,22 +59,25 @@ export function buildInitialMainCategories(income = 0): MainCategory[] {
       name: "Liabilities",
       tag: "Liabilities",
       percentage: 30,
+      icon: "lightning",
       subcategories: [
         {
           id: "liabilities-rent",
           categoryId: "liabilities",
           name: "Rent",
-          digital: Math.round(liabilitiesBudget * 0.8),
+          digital: 0,
           cash: 0,
-          allocated: Math.round(liabilitiesBudget * 0.8),
+          allocated: 0,
+          isHidden: false,
         },
         {
           id: "liabilities-electricity",
           categoryId: "liabilities",
           name: "Electricity",
-          digital: Math.round(liabilitiesBudget * 0.2),
-          cash: 500,
-          allocated: Math.round(liabilitiesBudget * 0.2) + 500,
+          digital: 0,
+          cash: 0,
+          allocated: 0,
+          isHidden: false,
         },
       ],
     },
@@ -84,30 +86,34 @@ export function buildInitialMainCategories(income = 0): MainCategory[] {
       name: "Expenses",
       tag: "Expenses",
       percentage: 40,
+      icon: "receipt",
       subcategories: [
         {
           id: "expenses-food",
           categoryId: "expenses",
           name: "Food",
-          digital: Math.round(expensesBudget * 0.5),
-          cash: 1500,
-          allocated: Math.round(expensesBudget * 0.5) + 1500,
+          digital: 0,
+          cash: 0,
+          allocated: 0,
+          isHidden: false,
         },
         {
           id: "expenses-transpo",
           categoryId: "expenses",
           name: "Transpo",
-          digital: Math.round(expensesBudget * 0.3),
-          cash: 500,
-          allocated: Math.round(expensesBudget * 0.3) + 500,
+          digital: 0,
+          cash: 0,
+          allocated: 0,
+          isHidden: false,
         },
         {
           id: "expenses-clothes",
           categoryId: "expenses",
           name: "Clothes",
-          digital: Math.round(expensesBudget * 0.2) - 2000,
+          digital: 0,
           cash: 0,
-          allocated: Math.round(expensesBudget * 0.2) - 2000,
+          allocated: 0,
+          isHidden: false,
         },
       ],
     },
@@ -120,6 +126,7 @@ export function calculateAllocations(income: number, categories: MainCategory[])
 
   for (const cat of categories) {
     result[cat.id] = Math.round(safeIncome * (cat.percentage / 100));
+    result[cat.name] = Math.round(safeIncome * (cat.percentage / 100));
   }
 
   return result;
@@ -131,13 +138,25 @@ export function addIncomeToCategories(categories: MainCategory[], income: number
 
   return categories.map((cat) => {
     const catAllocation = Math.round(safeIncome * (cat.percentage / 100));
-    const subCount = cat.subcategories.length;
-    if (subCount === 0) return cat;
+    const subs = cat.subcategories;
 
-    const perSubAllocation = Math.floor(catAllocation / subCount);
-    const remainder = catAllocation - perSubAllocation * subCount;
+    if (subs.length === 0) {
+      const newSub: SubCategory = {
+        id: `${cat.id}-general`,
+        categoryId: cat.id,
+        name: "General",
+        digital: catAllocation,
+        cash: 0,
+        allocated: catAllocation,
+        isHidden: false,
+      };
+      return { ...cat, subcategories: [newSub] };
+    }
 
-    const newSubs = cat.subcategories.map((sub, idx) => {
+    const perSubAllocation = Math.floor(catAllocation / subs.length);
+    const remainder = catAllocation - perSubAllocation * subs.length;
+
+    const newSubs = subs.map((sub, idx) => {
       const addition = perSubAllocation + (idx === 0 ? remainder : 0);
       return {
         ...sub,
@@ -225,7 +244,6 @@ export function transferBetweenSubStashes(
   const safeAmount = Number.isFinite(amount) && amount > 0 ? Math.round(amount) : 0;
   if (safeAmount <= 0 || fromSubId === toSubId) return categories;
 
-  // First step: deduct from source sub-stash
   let step1 = categories.map((cat) => {
     const hasSub = cat.subcategories.some((s) => s.id === fromSubId);
     if (!hasSub) return cat;
@@ -245,7 +263,6 @@ export function transferBetweenSubStashes(
     };
   });
 
-  // Second step: add to target sub-stash (into digital or cash matching source)
   let step2 = step1.map((cat) => {
     const hasSub = cat.subcategories.some((s) => s.id === toSubId);
     if (!hasSub) return cat;
@@ -264,6 +281,18 @@ export function transferBetweenSubStashes(
   });
 
   return step2;
+}
+
+export function toggleHideSubCategoryInCategories(
+  categories: MainCategory[],
+  subCategoryId: string
+): MainCategory[] {
+  return categories.map((cat) => ({
+    ...cat,
+    subcategories: cat.subcategories.map((sub) =>
+      sub.id === subCategoryId ? { ...sub, isHidden: !sub.isHidden } : sub
+    ),
+  }));
 }
 
 export function updateCategoryPercentages(
@@ -296,6 +325,7 @@ export function addSubCategoryToCategory(
       digital: 0,
       cash: 0,
       allocated: 0,
+      isHidden: false,
     };
 
     return {
@@ -339,6 +369,12 @@ export function getCategoryTotalBalance(cat: MainCategory): number {
   return cat.subcategories.reduce((acc, sub) => acc + sub.digital + sub.cash, 0);
 }
 
+export function getCategoryVisibleTotalBalance(cat: MainCategory): number {
+  return cat.subcategories
+    .filter((sub) => !sub.isHidden)
+    .reduce((acc, sub) => acc + sub.digital + sub.cash, 0);
+}
+
 export function getCategoryTotalDigital(cat: MainCategory): number {
   return cat.subcategories.reduce((acc, sub) => acc + sub.digital, 0);
 }
@@ -351,29 +387,41 @@ export function getCategoryTotalAllocated(cat: MainCategory): number {
   return cat.subcategories.reduce((acc, sub) => acc + sub.allocated, 0);
 }
 
+// Excludes hidden stashes from Total Balance calculation
 export function getTotalBalance(categories: MainCategory[]): number {
-  return categories.reduce((acc, cat) => acc + getCategoryTotalBalance(cat), 0);
+  return categories.reduce((acc, cat) => acc + getCategoryVisibleTotalBalance(cat), 0);
 }
 
 export function getTotalDigital(categories: MainCategory[]): number {
-  return categories.reduce((acc, cat) => acc + getCategoryTotalDigital(cat), 0);
+  return categories.reduce(
+    (acc, cat) =>
+      acc +
+      cat.subcategories
+        .filter((sub) => !sub.isHidden)
+        .reduce((sum, sub) => sum + sub.digital, 0),
+    0
+  );
 }
 
 export function getTotalCash(categories: MainCategory[]): number {
-  return categories.reduce((acc, cat) => acc + getCategoryTotalCash(cat), 0);
+  return categories.reduce(
+    (acc, cat) =>
+      acc +
+      cat.subcategories
+        .filter((sub) => !sub.isHidden)
+        .reduce((sum, sub) => sum + sub.cash, 0),
+    0
+  );
 }
 
 export function getAllocationTotals(categories: MainCategory[]) {
-  const totals: Record<CategoryTag, number> = {
-    Savings: 0,
-    Liabilities: 0,
-    Expenses: 0,
-  };
+  const totals: Record<string, number> = {};
 
   for (const cat of categories) {
-    if (cat.tag in totals) {
-      totals[cat.tag] += getCategoryTotalBalance(cat);
-    }
+    const total = getCategoryVisibleTotalBalance(cat);
+    totals[cat.id] = total;
+    totals[cat.name] = total;
+    totals[cat.tag] = total;
   }
 
   return totals;

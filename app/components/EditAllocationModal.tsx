@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BsCheckLg, BsExclamationTriangle, BsPencil, BsPlusLg, BsTrash, BsX } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 import { useApp } from "../lib/store";
+import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "./CategoryIcon";
 
 interface EditAllocationModalProps {
   open: boolean;
@@ -17,12 +18,20 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
     addSubCategory,
     renameSubCategoryName,
     removeSubCategory,
+    refreshData,
   } = useApp();
 
   const [percentages, setPercentages] = useState<Record<string, number>>({});
   const [newSubName, setNewSubName] = useState<Record<string, string>>({});
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const [editingSubName, setEditingSubName] = useState<string>("");
+
+  // New Category Creation state
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatPercentage, setNewCatPercentage] = useState("10");
+  const [selectedIcon, setSelectedIcon] = useState("wallet");
+
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -33,6 +42,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
       }
       setPercentages(initial);
       setNewSubName({});
+      setIsAddingCategory(false);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -44,10 +54,51 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
   const totalPercentage = Object.values(percentages).reduce((a, b) => a + b, 0);
   const isValidPercentage = totalPercentage === 100;
 
-  function handleSavePercentages() {
+  async function handleSavePercentages() {
     if (!isValidPercentage) return;
-    updateAllocations(percentages);
+    await updateAllocations(percentages);
     onClose();
+  }
+
+  async function handleCreateCategory() {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+
+    try {
+      const res = await fetch("/api/finance/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmed,
+          tag: trimmed,
+          percentage: Number.parseInt(newCatPercentage, 10) || 0,
+          icon: selectedIcon,
+        }),
+      });
+
+      if (res.ok) {
+        setNewCatName("");
+        setIsAddingCategory(false);
+        await refreshData();
+      }
+    } catch (err) {
+      console.error("Create category error:", err);
+    }
+  }
+
+  async function handleDeleteCategory(catId: string, catName: string) {
+    if (typeof window !== "undefined" && window.confirm(`Delete "${catName}" category and all its stashes?`)) {
+      try {
+        const res = await fetch(`/api/finance/categories?id=${catId}`, {
+          method: "DELETE",
+        });
+        if (res.ok) {
+          await refreshData();
+        }
+      } catch (err) {
+        console.error("Delete category error:", err);
+      }
+    }
   }
 
   function handleAddSub(catId: string) {
@@ -81,7 +132,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
       />
 
       <div
-        className={`relative w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-t-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
+        className={`relative w-full max-w-lg max-h-[88vh] overflow-y-auto rounded-t-3xl bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
           visible ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
@@ -89,7 +140,10 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
         <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-zinc-800" />
 
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-zinc-100">Edit Categories & Allocation</h2>
+          <div>
+            <h2 className="text-lg font-bold text-zinc-100">Budget Category Manager</h2>
+            <p className="mt-0.5 text-xs text-zinc-400">Customize categories & income split rules</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -99,12 +153,12 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
           </button>
         </div>
 
-        {/* Total indicator with warning yellow / valid light blue styling */}
+        {/* Total indicator */}
         <div
-          className={`mt-4 flex items-center justify-between rounded-xl border p-3 text-xs font-semibold ${
+          className={`mt-4 flex items-center justify-between rounded-xl p-3 text-xs font-semibold ${
             isValidPercentage
-              ? "border-zinc-800 bg-zinc-900/60 text-zinc-300"
-              : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+              ? "bg-emerald-500/10 text-emerald-400"
+              : "bg-amber-500/10 text-amber-400"
           }`}
         >
           <div className="flex items-center gap-1.5">
@@ -115,8 +169,83 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
             )}
             <span>{isValidPercentage ? "Valid Allocation Split" : "Allocation Must Equal 100%"}</span>
           </div>
-          <span className="font-mono text-sm">{totalPercentage}%</span>
+          <span className="font-mono text-sm">{totalPercentage}% / 100%</span>
         </div>
+
+        {/* Create New Main Category Toggle */}
+        {isAddingCategory ? (
+          <div className="mt-4 rounded-2xl bg-zinc-900/60 p-4">
+            <h3 className="text-xs font-bold text-emerald-400">Add New Category</h3>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <input
+                type="text"
+                placeholder="Category Name"
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                className="col-span-2 min-h-[38px] rounded-xl bg-zinc-950 px-3 text-xs text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <input
+                type="number"
+                placeholder="%"
+                value={newCatPercentage}
+                onChange={(e) => setNewCatPercentage(e.target.value)}
+                className="min-h-[38px] rounded-xl bg-zinc-950 px-3 text-xs font-bold text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Icon Chooser */}
+            <div className="mt-3">
+              <span className="text-[11px] font-medium text-zinc-400">Choose Icon</span>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {CATEGORY_ICON_OPTIONS.map((opt) => {
+                  const IconComp = opt.icon;
+                  const isSelected = selectedIcon === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSelectedIcon(opt.id)}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${
+                        isSelected
+                          ? "bg-emerald-500 text-zinc-950 font-bold"
+                          : "bg-zinc-950 text-zinc-400 hover:text-zinc-200"
+                      }`}
+                      title={opt.label}
+                    >
+                      <IconComp className="h-4 w-4" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-4 flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setIsAddingCategory(false)}
+                className="rounded-xl bg-zinc-950 px-3 py-1.5 text-xs text-zinc-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400"
+              >
+                Create Category
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAddingCategory(true)}
+            className="mt-3 flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-900/40 text-xs font-semibold text-emerald-400 transition-all hover:bg-zinc-900"
+          >
+            <BsPlusLg className="h-3.5 w-3.5" />
+            Add Main Category
+          </button>
+        )}
 
         {/* Categories editor */}
         <div className="mt-4 space-y-4">
@@ -124,9 +253,25 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
             const currentPct = percentages[cat.id] ?? cat.percentage;
 
             return (
-              <div key={cat.id} className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+              <div key={cat.id} className="rounded-2xl bg-zinc-900/40 p-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-zinc-100">{cat.name}</h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-emerald-400">
+                      <CategoryIcon iconName={cat.icon} className="h-4 w-4" />
+                    </div>
+                    <h3 className="font-semibold text-zinc-100">{cat.name}</h3>
+                    {categories.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                        className="text-zinc-500 hover:text-rose-400 transition-colors ml-1"
+                        title="Delete Category"
+                      >
+                        <BsTrash className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
@@ -137,7 +282,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                         const val = Math.min(100, Math.max(0, Number.parseInt(e.target.value, 10) || 0));
                         setPercentages((prev) => ({ ...prev, [cat.id]: val }));
                       }}
-                      className="w-14 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-right text-xs font-bold text-zinc-100 outline-none focus:border-zinc-700"
+                      className="w-14 rounded-lg bg-zinc-950 px-2 py-1 text-right text-xs font-bold text-emerald-400 outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     <span className="text-xs text-zinc-400">%</span>
                   </div>
@@ -152,16 +297,16 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                     const val = Number.parseInt(e.target.value, 10);
                     setPercentages((prev) => ({ ...prev, [cat.id]: val }));
                   }}
-                  className="mt-3 w-full accent-sky-400"
+                  className="mt-3 w-full accent-emerald-500"
                 />
 
                 {/* Subcategories list */}
-                <div className="mt-3 border-t border-zinc-800/60 pt-3">
+                <div className="mt-3 pt-3 border-t border-zinc-800/40">
                   <div className="space-y-1.5">
                     {cat.subcategories.map((sub) => (
                       <div
                         key={sub.id}
-                        className="flex items-center justify-between rounded-xl bg-zinc-900/80 px-3 py-2 text-xs"
+                        className="flex items-center justify-between rounded-xl bg-zinc-950/80 px-3 py-2 text-xs"
                       >
                         {editingSubId === sub.id ? (
                           <div className="flex flex-1 items-center gap-2">
@@ -169,12 +314,12 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                               type="text"
                               value={editingSubName}
                               onChange={(e) => setEditingSubName(e.target.value)}
-                              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white outline-none"
+                              className="flex-1 rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white outline-none"
                             />
                             <button
                               type="button"
                               onClick={() => handleSaveRename(sub.id)}
-                              className="rounded-lg bg-zinc-200 px-2.5 py-1 text-xs font-bold text-zinc-950"
+                              className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-bold text-zinc-950"
                             >
                               Save
                             </button>
@@ -221,12 +366,12 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleAddSub(cat.id);
                       }}
-                      className="min-h-[36px] flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-xs text-zinc-100 outline-none focus:border-zinc-700"
+                      className="min-h-[36px] flex-1 rounded-xl bg-zinc-950 px-3 text-xs text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     <button
                       type="button"
                       onClick={() => handleAddSub(cat.id)}
-                      className="min-h-[36px] rounded-xl bg-zinc-800 px-3 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-700 flex items-center gap-1"
+                      className="min-h-[36px] rounded-xl bg-zinc-800 px-3 text-xs font-semibold text-emerald-400 transition-colors hover:bg-zinc-700 flex items-center gap-1"
                     >
                       <BsPlusLg className="h-3 w-3" /> Add
                     </button>
@@ -241,7 +386,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
           type="button"
           disabled={!isValidPercentage}
           onClick={handleSavePercentages}
-          className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-300 active:scale-[0.99] disabled:opacity-30"
+          className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-30"
         >
           <BsCheckLg className="h-4 w-4" />
           Save Allocation Rules

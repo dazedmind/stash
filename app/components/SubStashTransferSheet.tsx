@@ -45,6 +45,13 @@ export function SubStashTransferSheet({
   if (!open) return null;
 
   const fromSub = allSubcategories.find((s) => s.id === fromSubId);
+  const fromCategory = categories.find((c) => c.id === fromSub?.categoryId);
+
+  // If opened for a specific category's stash, scope the "From" dropdown to ONLY that category's sub-stashes!
+  const availableFromCategories = fromCategory
+    ? [fromCategory]
+    : categories;
+
   const parsedAmount = Number.parseInt(amount.replace(/\D/g, ""), 10) || 0;
 
   let maxAmount = 0;
@@ -83,7 +90,7 @@ export function SubStashTransferSheet({
       />
 
       <div
-        className={`relative w-full max-w-lg rounded-t-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
+        className={`relative w-full max-w-lg rounded-t-3xl bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
           visible ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
@@ -96,7 +103,7 @@ export function SubStashTransferSheet({
         </div>
 
         {/* Mode Selector */}
-        <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-1">
+        <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-xl bg-zinc-900/60 p-1">
           <button
             type="button"
             onClick={() => setTransferType("between-stashes")}
@@ -106,7 +113,7 @@ export function SubStashTransferSheet({
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Stash to Stash
+            Other Stash
           </button>
           <button
             type="button"
@@ -117,7 +124,7 @@ export function SubStashTransferSheet({
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Digital ↔ Cash
+            Internal
           </button>
         </div>
 
@@ -127,14 +134,21 @@ export function SubStashTransferSheet({
               <span className="text-xs text-zinc-400 font-medium">From</span>
               <select
                 value={fromSubId}
-                onChange={(e) => setFromSubId(e.target.value)}
-                className="mt-1 min-h-[44px] w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:border-zinc-700"
+                onChange={(e) => {
+                  const newFrom = e.target.value;
+                  setFromSubId(newFrom);
+                  if (newFrom === toSubId) {
+                    const other = allSubcategories.find((s) => s.id !== newFrom);
+                    if (other) setToSubId(other.id);
+                  }
+                }}
+                className="mt-1 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
               >
-                {categories.map((cat) => (
+                {availableFromCategories.map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
                     {cat.subcategories.map((sub) => (
                       <option key={sub.id} value={sub.id}>
-                        {cat.name} → {sub.name} ({formatCurrency(sub.digital + sub.cash)})
+                        {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
                       </option>
                     ))}
                   </optgroup>
@@ -143,11 +157,11 @@ export function SubStashTransferSheet({
             </div>
 
             <div>
-              <span className="text-xs text-zinc-400 font-medium">To</span>
+              <span className="text-xs text-zinc-400 font-medium">To Target Stash</span>
               <select
                 value={toSubId}
                 onChange={(e) => setToSubId(e.target.value)}
-                className="mt-1 min-h-[44px] w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:border-zinc-700"
+                className="mt-1 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 {categories.map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
@@ -155,7 +169,7 @@ export function SubStashTransferSheet({
                       .filter((s) => s.id !== fromSubId)
                       .map((sub) => (
                         <option key={sub.id} value={sub.id}>
-                          {cat.name} → {sub.name}
+                          {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
                         </option>
                       ))}
                   </optgroup>
@@ -167,10 +181,10 @@ export function SubStashTransferSheet({
               <button
                 type="button"
                 onClick={() => setSource("digital")}
-                className={`min-h-[38px] rounded-xl border text-xs font-medium transition-colors ${
+                className={`min-h-[38px] rounded-xl text-xs font-medium transition-colors ${
                   source === "digital"
-                    ? "border-zinc-700 bg-zinc-800 text-zinc-100 font-semibold"
-                    : "border-zinc-800/80 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 Digital ({formatCurrency(fromSub?.digital || 0)})
@@ -178,10 +192,10 @@ export function SubStashTransferSheet({
               <button
                 type="button"
                 onClick={() => setSource("cash")}
-                className={`min-h-[38px] rounded-xl border text-xs font-medium transition-colors ${
+                className={`min-h-[38px] rounded-xl text-xs font-medium transition-colors ${
                   source === "cash"
-                    ? "border-zinc-700 bg-zinc-800 text-zinc-100 font-semibold"
-                    : "border-zinc-800/80 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 Cash ({formatCurrency(fromSub?.cash || 0)})
@@ -195,13 +209,13 @@ export function SubStashTransferSheet({
               <select
                 value={fromSubId}
                 onChange={(e) => setFromSubId(e.target.value)}
-                className="mt-1 min-h-[44px] w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:border-zinc-700"
+                className="mt-1 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
               >
-                {categories.map((cat) => (
+                {availableFromCategories.map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
                     {cat.subcategories.map((sub) => (
                       <option key={sub.id} value={sub.id}>
-                        {cat.name} → {sub.name}
+                        {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
                       </option>
                     ))}
                   </optgroup>
@@ -213,10 +227,10 @@ export function SubStashTransferSheet({
               <button
                 type="button"
                 onClick={() => setDirection("to-cash")}
-                className={`min-h-[40px] rounded-xl border text-xs font-medium transition-colors ${
+                className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
                   direction === "to-cash"
-                    ? "border-zinc-700 bg-zinc-800 text-zinc-100 font-semibold"
-                    : "border-zinc-800/80 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 Digital → Cash
@@ -224,10 +238,10 @@ export function SubStashTransferSheet({
               <button
                 type="button"
                 onClick={() => setDirection("to-digital")}
-                className={`min-h-[40px] rounded-xl border text-xs font-medium transition-colors ${
+                className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
                   direction === "to-digital"
-                    ? "border-zinc-700 bg-zinc-800 text-zinc-100 font-semibold"
-                    : "border-zinc-800/80 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
                 Cash → Digital
@@ -250,7 +264,7 @@ export function SubStashTransferSheet({
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-              className="min-h-[52px] w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:border-zinc-700"
+              className="min-h-[52px] w-full rounded-xl bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
           {parsedAmount > maxAmount && (
@@ -267,7 +281,7 @@ export function SubStashTransferSheet({
               key={preset}
               type="button"
               onClick={() => setAmount(String(Math.min(preset, maxAmount)))}
-              className="min-h-[38px] rounded-xl border border-zinc-800 bg-zinc-900 text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
+              className="min-h-[38px] rounded-xl bg-zinc-900 text-xs text-zinc-300 transition-colors hover:bg-zinc-800"
             >
               ₱{preset.toLocaleString()}
             </button>
@@ -275,18 +289,18 @@ export function SubStashTransferSheet({
           <button
             type="button"
             onClick={() => setAmount(String(maxAmount))}
-            className="min-h-[38px] rounded-xl border border-zinc-800 bg-zinc-900 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-800"
+            className="min-h-[38px] rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-colors hover:bg-zinc-800"
           >
             Max
           </button>
         </div>
 
-        {/* Informative Primary Button - Light Blue */}
+        {/* Primary Action Button */}
         <button
           type="button"
           disabled={!isValid}
           onClick={handleSubmit}
-          className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-400 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-300 active:scale-[0.99] disabled:opacity-30"
+          className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-30"
         >
           <BsArrowLeftRight className="h-4 w-4" />
           Confirm Transfer

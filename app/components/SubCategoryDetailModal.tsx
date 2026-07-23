@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsArrowLeftRight, BsDashLg, BsX } from "react-icons/bs";
+import { BsArrowLeftRight, BsDashLg, BsEye, BsEyeSlash, BsX } from "react-icons/bs";
 import { formatCurrency, getCategoryTotalBalance, type MainCategory, type SubCategory } from "../lib/finance";
+import { useApp } from "../lib/store";
 
 interface SubCategoryDetailModalProps {
   category: MainCategory | null;
@@ -19,6 +20,7 @@ export function SubCategoryDetailModal({
   onTransferSub,
   onExpenseSub,
 }: SubCategoryDetailModalProps) {
+  const { toggleHideSubCategory } = useApp();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export function SubCategoryDetailModal({
       />
 
       <div
-        className={`relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-t-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
+        className={`relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-t-3xl bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
           visible ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
@@ -76,46 +78,70 @@ export function SubCategoryDetailModal({
           ) : (
             category.subcategories.map((sub) => {
               const subTotal = sub.digital + sub.cash;
+              const isHidden = Boolean(sub.isHidden);
 
               return (
                 <div
                   key={sub.id}
-                  className="rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4 transition-all hover:border-zinc-700"
+                  className="rounded-2xl bg-zinc-900/40 p-4 transition-all hover:bg-zinc-900/70"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-base text-zinc-100">{sub.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-base text-zinc-100">{sub.name}</h3>
+
+                      {/* Hide from Total Balance toggle button */}
+                      <button
+                        type="button"
+                        onClick={() => toggleHideSubCategory(sub.id)}
+                        className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                          isHidden
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                        }`}
+                        title={isHidden ? "Hidden from total balance" : "Visible in total balance"}
+                      >
+                        {isHidden ? (
+                          <>
+                            <BsEyeSlash className="h-3 w-3" /> Hidden from total
+                          </>
+                        ) : (
+                          <>
+                            <BsEye className="h-3 w-3" /> Included in total
+                          </>
+                        )}
+                      </button>
+                    </div>
+
                     <p className="text-lg font-bold tabular-nums text-zinc-100">
                       {formatCurrency(subTotal)}
                     </p>
                   </div>
 
-                  <div className="mt-2.5 flex items-center justify-between border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
+                  <div className="mt-2.5 flex flex-col gap-2 border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
                     <span>Digital {formatCurrency(sub.digital)}</span>
                     <span>Cash {formatCurrency(sub.cash)}</span>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    {/* Transfer Button - Neutral with subtle icon */}
                     <button
                       type="button"
                       onClick={() => {
                         onClose();
                         onTransferSub(sub);
                       }}
-                      className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
+                      className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
                     >
                       <BsArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
                       Transfer
                     </button>
 
-                    {/* Subtract Expense Button - Red Danger */}
                     <button
                       type="button"
                       onClick={() => {
                         onClose();
                         onExpenseSub(sub);
                       }}
-                      className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs font-semibold text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95"
+                      className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-rose-500/10 text-xs font-semibold text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95"
                     >
                       <BsDashLg className="h-3.5 w-3.5" />
                       Subtract Expense

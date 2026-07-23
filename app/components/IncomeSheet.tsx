@@ -47,7 +47,7 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
       />
 
       <div
-        className={`relative w-full max-w-lg rounded-t-3xl border border-zinc-800 bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
+        className={`relative w-full max-w-lg rounded-t-3xl bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
           visible ? "translate-y-0" : "translate-y-full"
         }`}
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
@@ -69,14 +69,15 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={amount}
+              value={amount.replace(/^0+/, "")}
+              placeholder="0.00"
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-              className="min-h-[52px] w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:border-zinc-700"
+              className="min-h-[52px] w-full rounded-xl bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
         </label>
 
-        <div className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3">
+        <div className="mt-4 rounded-xl bg-zinc-900/60 p-3">
           <span className="text-xs font-medium text-zinc-400">Allocation Breakdown</span>
           <div className="mt-2 space-y-1.5 text-xs">
             {categories.map((cat) => {

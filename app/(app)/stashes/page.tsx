@@ -1,44 +1,66 @@
 "use client";
 
 import { useState } from "react";
+import { BsClockHistory, BsPencil } from "react-icons/bs";
 import { ExpenseSheet } from "../../components/ExpenseSheet";
 import { StashCard } from "../../components/StashCard";
 import { SubCategoryDetailModal } from "../../components/SubCategoryDetailModal";
 import { SubStashTransferSheet } from "../../components/SubStashTransferSheet";
-import { formatCurrency, type MainCategory, type CategoryTag } from "../../lib/finance";
+import { TransactionHistoryModal } from "../../components/TransactionHistoryModal";
+import { formatCurrency, type MainCategory } from "../../lib/finance";
 import { useApp } from "../../lib/store";
-
-const filters: Array<CategoryTag | "All"> = ["All", "Savings", "Liabilities", "Expenses"];
+import { EditAllocationModal } from "../../components/EditAllocationModal";
 
 export default function StashesPage() {
   const { categories, totalDigital, totalCash } = useApp();
-  const [filter, setFilter] = useState<CategoryTag | "All">("All");
+  const [filter, setFilter] = useState<string>("All");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [editAllocOpen, setEditAllocOpen] = useState(false);
 
   const [selectedCategoryModal, setSelectedCategoryModal] = useState<MainCategory | null>(null);
   const [transferFromSubId, setTransferFromSubId] = useState<string | null>(null);
   const [expenseFromSubId, setExpenseFromSubId] = useState<string | null>(null);
 
+  const filterOptions = ["All", ...categories.map((c) => c.name)];
+
   const filtered =
-    filter === "All" ? categories : categories.filter((c) => c.tag === filter);
+    filter === "All" ? categories : categories.filter((c) => c.name === filter);
 
   return (
     <>
       <div className="animate-fade-in space-y-4 px-4 py-4">
-        <header>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            STASHES
-          </span>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-100">Category Stashes</h1>
+        <header className="flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+              STASHES
+            </span>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-100">Category Stashes</h1>
+          </div>
+          {/* <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+          >
+            <BsClockHistory className="h-3.5 w-3.5 text-emerald-400" />
+            History
+          </button> */}
+          <button
+              type="button"
+              onClick={() => setEditAllocOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-zinc-800/80 px-2.5 py-1 text-xs font-medium text-emerald-400 transition-colors hover:bg-zinc-700"
+            >
+              <BsPencil className="h-3 w-3" /> Manage
+            </button>
         </header>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-3">
+          <div className="rounded-2xl bg-zinc-900/60 p-3.5">
             <p className="text-xs text-zinc-500 font-medium">Total Digital</p>
             <p className="mt-1 text-base font-semibold tabular-nums text-zinc-100">
               {formatCurrency(totalDigital)}
             </p>
           </div>
-          <div className="rounded-2xl border border-zinc-800/80 bg-zinc-900/50 p-3">
+          <div className="rounded-2xl bg-zinc-900/60 p-3.5">
             <p className="text-xs text-zinc-500 font-medium">Total Cash</p>
             <p className="mt-1 text-base font-semibold tabular-nums text-zinc-100">
               {formatCurrency(totalCash)}
@@ -47,15 +69,15 @@ export default function StashesPage() {
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {filters.map((item) => (
+          {filterOptions.map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => setFilter(item)}
               className={`shrink-0 min-h-[36px] rounded-xl px-3.5 text-xs font-medium transition-colors ${
                 filter === item
-                  ? "border border-zinc-700 bg-zinc-800 text-zinc-100 font-semibold"
-                  : "bg-zinc-900/60 text-zinc-400 border border-zinc-800/60 hover:text-zinc-200"
+                  ? "bg-emerald-500/10 text-emerald-400 font-semibold"
+                  : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
               }`}
             >
               {item}
@@ -74,6 +96,8 @@ export default function StashesPage() {
           ))}
         </div>
       </div>
+
+      <TransactionHistoryModal open={historyOpen} onClose={() => setHistoryOpen(false)} />
 
       <SubCategoryDetailModal
         category={selectedCategoryModal}
@@ -94,6 +118,8 @@ export default function StashesPage() {
         defaultSubCategoryId={expenseFromSubId || undefined}
         onClose={() => setExpenseFromSubId(null)}
       />
+
+      <EditAllocationModal open={editAllocOpen} onClose={() => setEditAllocOpen(false)} />
     </>
   );
 }
