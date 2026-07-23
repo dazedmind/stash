@@ -73,7 +73,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
           ) : (
             <BsCreditCard2Back className="h-5 w-5" />
           )}
-          Pay Later
+          PayLater
         </Link>
 
         {/* Me */}

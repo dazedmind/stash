@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsArrowLeftRight } from "react-icons/bs";
+import { BsArrowLeftRight, BsCash, BsCreditCard } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 import { useApp } from "../lib/store";
+import { StashSelectCard } from "./StashSelectCard";
 
 interface SubStashTransferSheetProps {
   open: boolean;
@@ -46,11 +47,6 @@ export function SubStashTransferSheet({
 
   const fromSub = allSubcategories.find((s) => s.id === fromSubId);
   const fromCategory = categories.find((c) => c.id === fromSub?.categoryId);
-
-  // If opened for a specific category's stash, scope the "From" dropdown to ONLY that category's sub-stashes!
-  const availableFromCategories = fromCategory
-    ? [fromCategory]
-    : categories;
 
   const parsedAmount = Number.parseInt(amount.replace(/\D/g, ""), 10) || 0;
 
@@ -99,7 +95,7 @@ export function SubStashTransferSheet({
 
         <div className="flex items-center gap-2">
           <BsArrowLeftRight className="h-4 w-4 text-emerald-400" />
-          <h2 className="text-base font-semibold text-zinc-100">Transfer Funds</h2>
+          <h2 className="text-xl font-semibold text-zinc-100">Transfer Funds</h2>
         </div>
 
         {/* Mode Selector */}
@@ -124,128 +120,128 @@ export function SubStashTransferSheet({
                 : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Internal
+            Internal Transfer
           </button>
         </div>
 
         {transferType === "between-stashes" ? (
           <div className="mt-3.5 space-y-3">
-            <div>
-              <span className="text-xs text-zinc-400 font-medium">From</span>
-              <select
-                value={fromSubId}
-                onChange={(e) => {
-                  const newFrom = e.target.value;
-                  setFromSubId(newFrom);
-                  if (newFrom === toSubId) {
-                    const other = allSubcategories.find((s) => s.id !== newFrom);
-                    if (other) setToSubId(other.id);
-                  }
-                }}
-                className="mt-1 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {availableFromCategories.map((cat) => (
-                  <optgroup key={cat.id} label={cat.name}>
-                    {cat.subcategories.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
+            {/* Scoped From Stash Selector Card with Category Icons */}
+            <StashSelectCard
+              label="From"
+              selectedSubId={fromSubId}
+              categories={categories}
+              filterCategoryId={fromCategory?.id}
+              onSelect={(newFrom) => {
+                setFromSubId(newFrom);
+                if (newFrom === toSubId) {
+                  const other = allSubcategories.find((s) => s.id !== newFrom);
+                  if (other) setToSubId(other.id);
+                }
+              }}
+            />
 
-            <div>
-              <span className="text-xs text-zinc-400 font-medium">To Target Stash</span>
-              <select
-                value={toSubId}
-                onChange={(e) => setToSubId(e.target.value)}
-                className="mt-1 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {categories.map((cat) => (
-                  <optgroup key={cat.id} label={cat.name}>
-                    {cat.subcategories
-                      .filter((s) => s.id !== fromSubId)
-                      .map((sub) => (
-                        <option key={sub.id} value={sub.id}>
-                          {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
+            {/* Target Stash Selector Card with Category Icons */}
+            <StashSelectCard
+              label="To Target Stash"
+              selectedSubId={toSubId}
+              categories={categories}
+              excludeSubId={fromSubId}
+              onSelect={(newTo) => setToSubId(newTo)}
+            />
 
-            <div className="grid grid-cols-2 gap-2">
+            {/* Payment Source Selection Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setSource("digital")}
-                className={`min-h-[38px] rounded-xl text-xs font-medium transition-colors ${
+                className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
                   source === "digital"
-                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700"
                     : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Digital ({formatCurrency(fromSub?.digital || 0)})
+                <span className="flex items-center justify-center gap-1.5">
+                  <BsCreditCard className="w-4 h-4 text-emerald-400"/>
+                  Digital ({formatCurrency(fromSub?.digital || 0)})
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSource("cash")}
-                className={`min-h-[38px] rounded-xl text-xs font-medium transition-colors ${
+                className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
                   source === "cash"
-                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700"
                     : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Cash ({formatCurrency(fromSub?.cash || 0)})
+                <span className="flex items-center justify-center gap-1.5">
+                  <BsCash className="w-4 h-4 text-emerald-400"/>
+                  Cash ({formatCurrency(fromSub?.cash || 0)})
+                </span>
               </button>
             </div>
           </div>
         ) : (
           <div className="mt-3.5 space-y-3">
-            <div>
-              <span className="text-xs text-zinc-400 font-medium">Stash</span>
-              <select
-                value={fromSubId}
-                onChange={(e) => setFromSubId(e.target.value)}
-                className="mt-1 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-              >
-                {availableFromCategories.map((cat) => (
-                  <optgroup key={cat.id} label={cat.name}>
-                    {cat.subcategories.map((sub) => (
-                      <option key={sub.id} value={sub.id}>
-                        {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
+            <StashSelectCard
+              label="Stash"
+              selectedSubId={fromSubId}
+              categories={categories}
+              filterCategoryId={fromCategory?.id}
+              onSelect={(newFrom) => setFromSubId(newFrom)}
+            />
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setDirection("to-cash")}
-                className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
-                  direction === "to-cash"
-                    ? "bg-zinc-800 text-zinc-100 font-semibold"
-                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                Digital → Cash
-              </button>
-              <button
-                type="button"
-                onClick={() => setDirection("to-digital")}
-                className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
-                  direction === "to-digital"
-                    ? "bg-zinc-800 text-zinc-100 font-semibold"
-                    : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
-                }`}
-              >
-                Cash → Digital
-              </button>
+            {/* Swap direction cards with middle switch button */}
+            <div>
+              <span className="text-xs text-zinc-400 font-medium">Transfer Direction</span>
+              <div className="mt-1.5 flex items-center gap-2">
+                {/* From Box */}
+                <div className="flex-1 rounded-xl bg-zinc-900 p-3">
+                  <div className="flex items-center gap-1.5 text-zinc-400">
+                    {direction === "to-cash" ? (
+                      <BsCreditCard className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <BsCash className="h-3.5 w-3.5 text-emerald-400" />
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider">From</span>
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-zinc-100">
+                    {direction === "to-cash" ? "Digital Wallet" : "Cash on Hand"}
+                  </p>
+                  <p className="mt-0.5 text-base text-emerald-400 font-semibold">
+                    {formatCurrency(direction === "to-cash" ? (fromSub?.digital || 0) : (fromSub?.cash || 0))}
+                  </p>
+                </div>
+
+                {/* Middle Swap Switch Button */}
+                <button
+                  type="button"
+                  onClick={() => setDirection((prev) => (prev === "to-cash" ? "to-digital" : "to-cash"))}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-emerald-400 hover:bg-zinc-700 hover:text-emerald-300 transition-all active:scale-90 shadow-xs"
+                  title="Swap Transfer Direction"
+                >
+                  <BsArrowLeftRight className="h-4 w-4" />
+                </button>
+
+                {/* To Box */}
+                <div className="flex-1 rounded-xl bg-zinc-900 p-3">
+                  <div className="flex items-center gap-1.5 text-zinc-400">
+                    {direction === "to-cash" ? (
+                      <BsCash className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <BsCreditCard className="h-3.5 w-3.5 text-emerald-400" />
+                    )}
+                    <span className="text-[10px] font-bold uppercase tracking-wider">To</span>
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-zinc-100">
+                    {direction === "to-cash" ? "Cash on Hand" : "Digital Wallet"}
+                  </p>
+                  <p className="mt-0.5 text-base text-zinc-400">
+                    {formatCurrency(direction === "to-cash" ? (fromSub?.cash || 0) : (fromSub?.digital || 0))}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}

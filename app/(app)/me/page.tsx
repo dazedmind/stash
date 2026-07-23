@@ -62,11 +62,11 @@ export default function MePage() {
                 <p className="truncate font-bold text-zinc-100">
                   {user?.name || "Guest Account"}
                 </p>
-                {isAuthenticated && (
+                {/* {isAuthenticated && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
                     <BsShieldCheck className="h-3 w-3" /> Neon DB
                   </span>
-                )}
+                )} */}
               </div>
               <p className="mt-0.5 text-xs text-zinc-400 truncate">
                 {user?.email || "Local temp session • Sign in to save to cloud"}
@@ -96,22 +96,6 @@ export default function MePage() {
           </div>
         </section>
 
-        {/* System & Storage */}
-        <section className="rounded-2xl bg-zinc-900/60 p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            Storage Engine
-          </h2>
-          <div className="mt-3 space-y-2 text-xs">
-            <div className="flex items-center justify-between rounded-xl bg-zinc-950/70 p-3">
-              <span className="text-zinc-300 font-medium">Database ORM</span>
-              <span className="font-mono text-emerald-400">Drizzle ORM</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-zinc-950/70 p-3">
-              <span className="text-zinc-300 font-medium">Postgres Host</span>
-              <span className="font-mono text-emerald-400">Neon DB</span>
-            </div>
-          </div>
-        </section>
 
         {!isAuthenticated && (
           <button

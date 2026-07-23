@@ -55,7 +55,7 @@ interface AppContextValue {
   register: (email: string, password: string, name?: string) => Promise<string | null>;
   logout: () => Promise<void>;
   refreshData: () => Promise<void>;
-  addIncomeAmount: (amount: number) => Promise<void>;
+  addIncomeAmount: (amount: number, subCategoryId?: string) => Promise<void>;
   addExpenseAmount: (
     subCategoryId: string,
     amount: number,
@@ -165,8 +165,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addIncomeAmount = useCallback(async (amount: number) => {
-    setCategories((prev) => addIncomeToCategories(prev, amount));
+  const addIncomeAmount = useCallback(async (amount: number, subCategoryId?: string) => {
+    if (!subCategoryId) {
+      setCategories((prev) => addIncomeToCategories(prev, amount));
+    } else {
+      setCategories((prev) =>
+        prev.map((cat) => ({
+          ...cat,
+          subcategories: cat.subcategories.map((sub) =>
+            sub.id === subCategoryId
+              ? { ...sub, digital: sub.digital + amount, allocated: sub.allocated + amount }
+              : sub
+          ),
+        }))
+      );
+    }
+
     setGuestTotalIncome((prev) => prev + amount);
 
     setUser((prev) =>
@@ -178,7 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await fetch("/api/finance/income", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount }),
+          body: JSON.stringify({ amount, subCategoryId }),
         });
         await fetchFinanceData();
       } catch (err) {

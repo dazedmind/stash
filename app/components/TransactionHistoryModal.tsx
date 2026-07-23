@@ -104,7 +104,7 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`flex h-9 w-9 items-center justify-center rounded-full font-bold ${
+                        className={`flex shrink-0 h-9 w-9 items-center justify-center rounded-full font-bold ${
                           isIncome
                             ? "bg-emerald-500/10 text-emerald-400"
                             : isExpense
@@ -121,7 +121,7 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
                         )}
                       </div>
                       <div>
-                        <p className="font-semibold text-sm text-zinc-100">
+                        <p className="font-semibold text-sm text-zinc-100 text-wrap">
                           {isIncome
                             ? "Income Deposit"
                             : isExpense

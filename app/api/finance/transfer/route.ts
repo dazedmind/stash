@@ -118,7 +118,7 @@ export async function POST(req: Request) {
         type: "transfer_sub",
         amount,
         source: isDigital ? "digital" : "cash",
-        description: `Transfer from ${fromSub.name} to ${toSub.name}`,
+        description: `${fromSub.name} to ${toSub.name}`,
       });
 
       return Response.json({ success: true });

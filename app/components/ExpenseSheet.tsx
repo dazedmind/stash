@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsDashLg, BsJournalText } from "react-icons/bs";
+import { BsCash, BsDashLg, BsJournalText, BsCreditCard } from "react-icons/bs";
 import { formatCurrency, type SubCategory } from "../lib/finance";
 import { useApp } from "../lib/store";
+import { StashSelectCard } from "./StashSelectCard";
 
 interface ExpenseSheetProps {
   open: boolean;
@@ -78,31 +79,19 @@ export function ExpenseSheet({
 
         <div className="flex items-center gap-2 text-rose-400">
           <BsDashLg className="h-4 w-4" />
-          <h2 className="text-base font-semibold text-zinc-100">Deduct Expense</h2>
+          <h2 className="text-xl font-semibold text-zinc-100">Deduct Expense</h2>
         </div>
 
         <div className="mt-4 space-y-3.5">
-          {/* Stash selector */}
-          <div>
-            <span className="text-xs text-zinc-400 font-medium">Subtract From Stash</span>
-            <select
-              value={subCategoryId}
-              onChange={(e) => setSubCategoryId(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              {categories.map((cat) => (
-                <optgroup key={cat.id} label={cat.name}>
-                  {cat.subcategories.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {cat.name} ({sub.name}: {formatCurrency(sub.digital + sub.cash)})
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+          {/* Custom Stash Select Card with Category Icons */}
+          <StashSelectCard
+            label="Subtract From Stash"
+            selectedSubId={subCategoryId}
+            categories={categories}
+            onSelect={(newSub) => setSubCategoryId(newSub)}
+          />
 
-          {/* Wallet Source */}
+          {/* Wallet Source Selector */}
           <div>
             <span className="text-xs text-zinc-400 font-medium">Payment Source</span>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -111,22 +100,28 @@ export function ExpenseSheet({
                 onClick={() => setSource("digital")}
                 className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
                   source === "digital"
-                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700"
                     : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Digital ({formatCurrency(selectedSub?.digital || 0)})
+                <span className="flex items-center justify-center gap-1">
+                  <BsCreditCard className="w-4 h-4"/>
+                  Digital ({formatCurrency(selectedSub?.digital || 0)})
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setSource("cash")}
                 className={`min-h-[40px] rounded-xl text-xs font-medium transition-colors ${
                   source === "cash"
-                    ? "bg-zinc-800 text-zinc-100 font-semibold"
+                    ? "bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700"
                     : "bg-zinc-900/60 text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                Cash ({formatCurrency(selectedSub?.cash || 0)})
+                <span className="flex items-center justify-center gap-1">
+                  <BsCash className="w-4 h-4"/>
+                  Cash ({formatCurrency(selectedSub?.cash || 0)})
+                </span>
               </button>
             </div>
           </div>
@@ -155,7 +150,7 @@ export function ExpenseSheet({
             )}
           </label>
 
-          {/* Note (optional) Text Input Field */}
+          {/* Note Input Field */}
           <div>
             <span className="text-xs text-zinc-400 font-medium">Note (optional)</span>
             <div className="relative mt-1.5">

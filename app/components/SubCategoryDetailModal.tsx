@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsArrowLeftRight, BsDashLg, BsEye, BsEyeSlash, BsX } from "react-icons/bs";
+import { BsArrowLeftRight, BsDashLg, BsX } from "react-icons/bs";
 import { formatCurrency, getCategoryTotalBalance, type MainCategory, type SubCategory } from "../lib/finance";
 import { useApp } from "../lib/store";
+import { Switch } from "./ui/switch";
 
 interface SubCategoryDetailModalProps {
   category: MainCategory | null;
@@ -20,7 +21,7 @@ export function SubCategoryDetailModal({
   onTransferSub,
   onExpenseSub,
 }: SubCategoryDetailModalProps) {
-  const { toggleHideSubCategory } = useApp();
+  const { categories, toggleHideSubCategory } = useApp();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -33,7 +34,9 @@ export function SubCategoryDetailModal({
 
   if (!open || !category) return null;
 
-  const totalCatBalance = getCategoryTotalBalance(category);
+  // Resolve live category from store so UI state updates immediately upon toggle
+  const liveCategory = categories.find((c) => c.id === category.id) || category;
+  const totalCatBalance = getCategoryTotalBalance(liveCategory);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal="true">
@@ -56,9 +59,9 @@ export function SubCategoryDetailModal({
 
         <header className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-zinc-100">{category.name} Stashes</h2>
+            <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stashes</h2>
             <p className="mt-0.5 text-xs text-zinc-400 font-medium">
-              {category.percentage}% Allocation • {formatCurrency(totalCatBalance)}
+              {liveCategory.percentage}% Allocation • {formatCurrency(totalCatBalance)}
             </p>
           </div>
           <button
@@ -71,12 +74,12 @@ export function SubCategoryDetailModal({
         </header>
 
         <div className="mt-4 space-y-3">
-          {category.subcategories.length === 0 ? (
+          {liveCategory.subcategories.length === 0 ? (
             <div className="rounded-2xl border border-zinc-800/60 p-6 text-center text-xs text-zinc-500">
               No sub-stashes created yet.
             </div>
           ) : (
-            category.subcategories.map((sub) => {
+            liveCategory.subcategories.map((sub) => {
               const subTotal = sub.digital + sub.cash;
               const isHidden = Boolean(sub.isHidden);
 
@@ -86,30 +89,27 @@ export function SubCategoryDetailModal({
                   className="rounded-2xl bg-zinc-900/40 p-4 transition-all hover:bg-zinc-900/70"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div>
                       <h3 className="font-semibold text-base text-zinc-100">{sub.name}</h3>
 
-                      {/* Hide from Total Balance toggle button */}
-                      <button
-                        type="button"
-                        onClick={() => toggleHideSubCategory(sub.id)}
-                        className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                          isHidden
-                            ? "bg-amber-500/10 text-amber-400"
-                            : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-                        }`}
-                        title={isHidden ? "Hidden from total balance" : "Visible in total balance"}
-                      >
-                        {isHidden ? (
-                          <>
-                            <BsEyeSlash className="h-3 w-3" /> Hidden from total
-                          </>
-                        ) : (
-                          <>
-                            <BsEye className="h-3 w-3" /> Included in total
-                          </>
-                        )}
-                      </button>
+                      {/* Hide from total balance Switch (Default OFF = included, ON = hidden) */}
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <Switch
+                          id={`hide-switch-${sub.id}`}
+                          checked={isHidden}
+                          onCheckedChange={() => toggleHideSubCategory(sub.id)}
+                        />
+                        <label
+                          htmlFor={`hide-switch-${sub.id}`}
+                          className="cursor-pointer text-[11px] font-medium select-none"
+                        >
+                          {isHidden ? (
+                            <span className="text-zinc-400 font-semibold">Hide from total</span>
+                          ) : (
+                            <span className="text-zinc-400">Hide from total</span>
+                          )}
+                        </label>
+                      </div>
                     </div>
 
                     <p className="text-lg font-bold tabular-nums text-zinc-100">
@@ -117,7 +117,7 @@ export function SubCategoryDetailModal({
                     </p>
                   </div>
 
-                  <div className="mt-2.5 flex flex-col gap-2 border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
+                  <div className="mt-2.5 flex flex-col gap-2 justify-between border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
                     <span>Digital {formatCurrency(sub.digital)}</span>
                     <span>Cash {formatCurrency(sub.cash)}</span>
                   </div>

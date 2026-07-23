@@ -185,7 +185,7 @@ export default function PayLaterPage() {
                   {/* Progress Bar & Checklist Quick Indicator */}
                   <div className="mt-3.5 pt-3 border-t border-zinc-800/40">
                     <div className="flex items-center justify-between text-[11px] font-medium text-zinc-400">
-                      <span>TO-DO Progress</span>
+                      <span>Payment Progress</span>
                       <span className="text-emerald-400 font-mono">
                         {paidCount} / {totalCount} paid ({progressPct}%)
                       </span>

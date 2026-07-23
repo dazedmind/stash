@@ -98,7 +98,7 @@ export default function HomePage() {
         
             <span className="mt-2 flex items-center gap-3">
               <p className="text-3xl font-extrabold tabular-nums tracking-tight text-zinc-100">
-                {!totalHidden ? `${formatCurrency(totalBalance)}` : '●●●●●●●●'}
+                {!totalHidden ? `${formatCurrency(totalBalance)}` : '●●●●●●'}
               </p>
             
                 {!totalHidden ? (
@@ -143,26 +143,19 @@ export default function HomePage() {
                 onClick={() => setSelectedCategoryModal(cat)}
                 className="cursor-pointer rounded-xl bg-zinc-950/70 p-2 transition-colors hover:bg-zinc-950 flex items-center gap-2 w-full"
               >
-            
-                <div className="flex items-center gap-2 w-full ">
-                      {/* Circular Div Icon on the Right Side */}
+                <div className="flex flex-col justify-center text-center items-center gap-2 w-full p-2">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 font-bold">
                     <CategoryIcon iconName={cat.icon} className="h-4 w-4" />
                   </div>
-                  <span>
-                    <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400">
+                  <span className="flex flex-col space-y-0.5">
+                    <div className="text-xs font-medium text-zinc-400">
                       <span className="truncate">{cat.name}</span>
                     </div>
-                    <p className="mt-1 text-base font-bold tabular-nums text-zinc-100">
-                      {formatCurrency(getCategoryTotalBalance(cat))}
+                    <p className="text-base font-bold tabular-nums text-zinc-100">
+                      {!totalHidden ? `${formatCurrency(getCategoryTotalBalance(cat))}` : '●●●●●'}
                     </p>
                   </span>
-               
                 </div>
-
-                {/* <div>
-                  <span className="font-mono text-emerald-400 font-semibold">{cat.percentage}%</span>
-                </div> */}
               </div>
             ))}
           </div>

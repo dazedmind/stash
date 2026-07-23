@@ -1,8 +1,7 @@
 import { db } from "@/db";
-import { categories, subcategories, transactions, users } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { categories as categoriesTable, subcategories, transactions, users } from "@/db/schema";
+import { and, eq, sql } from "drizzle-orm";
 import { generateId, getAuthenticatedUser } from "@/app/lib/auth";
-import { seedUserDefaultCategories } from "@/app/lib/seedUserCategories";
 
 export async function POST(req: Request) {
   try {
@@ -13,51 +12,82 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const amount = Number.parseInt(body.amount, 10);
+    const subCategoryId = body.subCategoryId; // optional specific sub-stash
 
     if (!Number.isFinite(amount) || amount <= 0) {
       return Response.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    // 1. Update user total income received
+    // Update user's total income received
     await db
       .update(users)
       .set({
-        totalIncomeReceived: sql`total_income_received + ${amount}`,
+        totalIncomeReceived: sql`${users.totalIncomeReceived} + ${amount}`,
       })
       .where(eq(users.id, user.id));
 
-    // 2. Fetch user categories
-    let userCategories = await db
-      .select()
-      .from(categories)
-      .where(eq(categories.userId, user.id));
-
-    if (userCategories.length === 0) {
-      await seedUserDefaultCategories(user.id);
-      userCategories = await db
+    // If specific sub-stash requested (manual deposit)
+    if (subCategoryId) {
+      const existingSub = await db
         .select()
-        .from(categories)
-        .where(eq(categories.userId, user.id));
+        .from(subcategories)
+        .where(and(eq(subcategories.id, subCategoryId), eq(subcategories.userId, user.id)));
+
+      if (!existingSub.length) {
+        return Response.json({ error: "Target sub-stash not found" }, { status: 404 });
+      }
+
+      const targetSub = existingSub[0];
+
+      await db
+        .update(subcategories)
+        .set({
+          digital: sql`${subcategories.digital} + ${amount}`,
+          allocated: sql`${subcategories.allocated} + ${amount}`,
+        })
+        .where(eq(subcategories.id, targetSub.id));
+
+      const detailsObj = { [targetSub.name]: amount };
+
+      await db.insert(transactions).values({
+        id: generateId(),
+        userId: user.id,
+        subCategoryId: targetSub.id,
+        type: "income",
+        amount,
+        source: "digital",
+        description: `Income added to ${targetSub.name}`,
+        details: JSON.stringify(detailsObj),
+      });
+
+      return Response.json({ success: true, details: detailsObj });
     }
 
-    const userSubcategories = await db
+    // Auto-allocate across categories (default mode)
+    let userCategories = await db
       .select()
-      .from(subcategories)
-      .where(eq(subcategories.userId, user.id));
+      .from(categoriesTable)
+      .where(eq(categoriesTable.userId, user.id));
 
-    const allocationBreakdown: Record<string, number> = {};
+    if (userCategories.length === 0) {
+      return Response.json({ error: "No categories found" }, { status: 400 });
+    }
 
-    // 3. Distribute income across EVERY category according to percentage
+    const breakdown: Record<string, number> = {};
+
     for (const cat of userCategories) {
       const catAllocation = Math.round(amount * (cat.percentage / 100));
-      allocationBreakdown[cat.name] = catAllocation;
+      breakdown[cat.name] = catAllocation;
 
-      const subs = userSubcategories.filter((s) => s.categoryId === cat.id);
+      let catSubs = await db
+        .select()
+        .from(subcategories)
+        .where(and(eq(subcategories.categoryId, cat.id), eq(subcategories.userId, user.id)));
 
-      if (subs.length === 0) {
-        // If category has no subcategories yet, create a default "General" sub-stash
+      if (catSubs.length === 0) {
+        const genSubId = generateId();
         await db.insert(subcategories).values({
-          id: generateId(),
+          id: genSubId,
           categoryId: cat.id,
           userId: user.id,
           name: "General",
@@ -65,39 +95,39 @@ export async function POST(req: Request) {
           cash: 0,
           allocated: catAllocation,
         });
-      } else {
-        const perSubAllocation = Math.floor(catAllocation / subs.length);
-        const remainder = catAllocation - perSubAllocation * subs.length;
+        continue;
+      }
 
-        for (let idx = 0; idx < subs.length; idx++) {
-          const sub = subs[idx];
-          const addition = perSubAllocation + (idx === 0 ? remainder : 0);
+      const perSubAllocation = Math.floor(catAllocation / catSubs.length);
+      const remainder = catAllocation - perSubAllocation * catSubs.length;
 
-          await db
-            .update(subcategories)
-            .set({
-              digital: sql`digital + ${addition}`,
-              allocated: sql`allocated + ${addition}`,
-            })
-            .where(eq(subcategories.id, sub.id));
-        }
+      for (let i = 0; i < catSubs.length; i++) {
+        const sub = catSubs[i];
+        const addition = perSubAllocation + (i === 0 ? remainder : 0);
+
+        await db
+          .update(subcategories)
+          .set({
+            digital: sql`${subcategories.digital} + ${addition}`,
+            allocated: sql`${subcategories.allocated} + ${addition}`,
+          })
+          .where(eq(subcategories.id, sub.id));
       }
     }
 
-    // 4. Record transaction log with breakdown details
     await db.insert(transactions).values({
       id: generateId(),
       userId: user.id,
       type: "income",
       amount,
       source: "digital",
-      description: "Income deposit",
-      details: JSON.stringify(allocationBreakdown),
+      description: `Income Deposit (${userCategories.length} categories split)`,
+      details: JSON.stringify(breakdown),
     });
 
-    return Response.json({ success: true, breakdown: allocationBreakdown });
+    return Response.json({ success: true, details: breakdown });
   } catch (error) {
     console.error("Income API error:", error);
-    return Response.json({ error: "Failed to process income" }, { status: 500 });
+    return Response.json({ error: "Failed to process income deposit" }, { status: 500 });
   }
 }

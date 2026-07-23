@@ -38,16 +38,13 @@ export function StashCard({
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-950 text-emerald-400 font-bold">
             <CategoryIcon iconName={category.icon} className="h-5 w-5" />
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-400">
             <h3 className="truncate font-semibold text-base text-zinc-100 transition-colors">
               {category.name}
             </h3>
-            <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-400">
-              <span className="rounded-md bg-zinc-500/10 px-2 py-0.5 font-medium text-zinc-400">
-                {category.percentage}%
-              </span>
-              {/* <span>{category.subcategories.length} stashes</span> */}
-            </div>
+            <span className="rounded-md bg-zinc-500/10 px-2 py-0.5 font-medium text-zinc-400">
+              {category.percentage}%
+            </span>
           </div>
         </div>
 
@@ -67,7 +64,7 @@ export function StashCard({
           >
             {sub.isHidden && <BsEyeSlash className="h-3 w-3 text-amber-400" title="Hidden from total balance" />}
             <span className="font-medium text-zinc-300">{sub.name}</span>
-            <span className="font-mono text-zinc-300">{formatCurrency(sub.digital + sub.cash)}</span>
+            {/* <span className="font-mono text-zinc-300">{formatCurrency(sub.digital + sub.cash)}</span> */}
           </span>
         ))}
       </div>
