@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-emerald-50: #ffffea;
+  --color-emerald-100: #ffffd0;
+  --color-emerald-200: #ffffa5;
+  --color-emerald-300: #ffff85;
+  --color-emerald-400: #ffff64;
+  --color-emerald-500: #ffff64;
+  --color-emerald-600: #e5e55a;
+  --color-emerald-700: #b2b246;
+  --color-emerald-800: #808032;
+  --color-emerald-900: #4d4d1e;
+  --color-emerald-950: #1a1a0a;
+}
+
 :root {
   color-scheme: dark;
   background: #181818;
@@ -46,8 +60,8 @@ input {
 }
 
 ::selection {
-  background: rgba(45, 212, 191, 0.35);
-  color: white;
+  background: rgba(255, 255, 100, 0.35);
+  color: #181818;
 }
 
 @keyframes fade-in {

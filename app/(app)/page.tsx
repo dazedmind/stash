@@ -64,11 +64,16 @@ export default function HomePage() {
       <div className="animate-fade-in space-y-5 px-4 py-4">
         {/* Header */}
         <header className="flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-              STASH
+          <div className="flex items-center gap-4">
+            <img src="stash-logo.png" className="w-6"/>
+
+            <span className="-space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">STASH</p>
+              {/* <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                STASH
+              </span> */}
+              <h1 className="text-xl font-bold tracking-tight text-zinc-100">Overview</h1>
             </span>
-            <h1 className="text-xl font-bold tracking-tight text-zinc-100">Overview</h1>
           </div>
 
           <div className="flex items-center gap-2">

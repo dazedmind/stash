@@ -80,12 +80,12 @@ export default function PayLaterPage() {
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-2xl bg-zinc-900/60 p-4">
             <p className="text-xs text-zinc-500 font-medium">Total Owed</p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-rose-400">
+            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-400">
               {formatCurrency(totalOwed)}
             </p>
           </div>
           <div className="rounded-2xl bg-zinc-900/60 p-4">
-            <p className="text-xs text-zinc-500 font-medium">Active Monthly Due</p>
+            <p className="text-xs text-zinc-500 font-medium">Payment Next Due</p>
             <p className="mt-1 text-xl font-bold tabular-nums text-zinc-100">
               {formatCurrency(totalMonthlyRepayments)}
             </p>
@@ -154,7 +154,7 @@ export default function PayLaterPage() {
                           </h3>
                           {isFullyPaid && (
                             <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                              PAID ✓
+                              PAID
                             </span>
                           )}
                         </div>
@@ -186,7 +186,7 @@ export default function PayLaterPage() {
                   <div className="mt-3.5 pt-3 border-t border-zinc-800/40">
                     <div className="flex items-center justify-between text-[11px] font-medium text-zinc-400">
                       <span>Payment Progress</span>
-                      <span className="text-emerald-400 font-mono">
+                      <span className="text-zinc-400 font-mono">
                         {paidCount} / {totalCount} paid ({progressPct}%)
                       </span>
                     </div>

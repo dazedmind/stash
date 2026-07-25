@@ -57,7 +57,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             aria-label="Add entry"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500 text-zinc-950 font-bold transition-transform active:scale-90 hover:bg-emerald-400 shadow-xs"
           >
-            <BsPlusLg className="h-5 w-5" />
+            <BsPlusLg className="h-5 w-5" strokeWidth={1.5} />
           </button>
         </div>
 

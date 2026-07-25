@@ -7,7 +7,6 @@ export async function GET(req: Request) {
   try {
     const user = await getAuthenticatedUser(req);
 
-    // If guest user, return empty list or handle gracefully
     if (!user) {
       return Response.json({ payLaters: [] });
     }
@@ -56,7 +55,6 @@ export async function POST(req: Request) {
       return Response.json({ error: "Name and valid total amount are required" }, { status: 400 });
     }
 
-    // Auto calculate repayment amount per installment
     const totalWithInterest = Math.round(parsedTotal * (1 + parsedRate / 100));
     const isOneTime = paymentType === "one_time" || parsedMonths === 1;
     const numMonths = isOneTime ? 1 : parsedMonths;
@@ -77,7 +75,6 @@ export async function POST(req: Request) {
       monthlyPayment,
     });
 
-    // Generate installment TO-DO items
     const baseDate = new Date(dueDate || Date.now());
 
     for (let i = 0; i < numMonths; i++) {
@@ -88,14 +85,12 @@ export async function POST(req: Request) {
       } else if (frequency === "Bi-weekly") {
         insDueDate.setDate(baseDate.getDate() + i * 14);
       } else {
-        // Monthly
         insDueDate.setMonth(baseDate.getMonth() + i);
       }
 
       const formattedDueDate = insDueDate.toISOString().split("T")[0];
       const title = isOneTime ? "Full Payment" : `Payment ${i + 1} of ${numMonths}`;
 
-      // Adjust last installment for remainder rounding
       const currentAmount = i === numMonths - 1
         ? totalWithInterest - monthlyPayment * (numMonths - 1)
         : monthlyPayment;
@@ -126,25 +121,40 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { installmentId, isPaid } = body;
+    const { installmentId, isPaid, payLaterId, name } = body;
 
-    if (!installmentId) {
-      return Response.json({ error: "Installment ID required" }, { status: 400 });
+    // Handle Pay Later item rename
+    if (payLaterId && name && typeof name === "string") {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return Response.json({ error: "Name cannot be empty" }, { status: 400 });
+      }
+      await db
+        .update(payLaters)
+        .set({ name: trimmedName })
+        .where(and(eq(payLaters.id, payLaterId), eq(payLaters.userId, user.id)));
+
+      return Response.json({ success: true });
     }
 
-    const paidVal = isPaid ? 1 : 0;
-    await db
-      .update(payLaterInstallments)
-      .set({
-        isPaid: paidVal,
-        paidAt: paidVal ? new Date() : null,
-      })
-      .where(and(eq(payLaterInstallments.id, installmentId), eq(payLaterInstallments.userId, user.id)));
+    // Handle Installment payment status toggle
+    if (installmentId) {
+      const paidVal = isPaid ? 1 : 0;
+      await db
+        .update(payLaterInstallments)
+        .set({
+          isPaid: paidVal,
+          paidAt: paidVal ? new Date() : null,
+        })
+        .where(and(eq(payLaterInstallments.id, installmentId), eq(payLaterInstallments.userId, user.id)));
 
-    return Response.json({ success: true });
+      return Response.json({ success: true });
+    }
+
+    return Response.json({ error: "Invalid payload" }, { status: 400 });
   } catch (error) {
-    console.error("Update installment error:", error);
-    return Response.json({ error: "Failed to update installment" }, { status: 500 });
+    console.error("Update pay-later error:", error);
+    return Response.json({ error: "Failed to update item" }, { status: 500 });
   }
 }
 

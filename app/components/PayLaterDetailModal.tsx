@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsCheckCircleFill, BsCircle, BsCreditCard2Back, BsTrash, BsX } from "react-icons/bs";
+import { BsCheckCircleFill, BsCircle, BsCreditCard2Back, BsPencil, BsTrash, BsX } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 import { ConfirmModal } from "./ConfirmModal";
 import { dateFormatter } from "../lib/dateFormatter";
@@ -11,7 +11,7 @@ export interface PayLaterInstallmentItem {
   payLaterId: string;
   title: string;
   amount: number;
-  dueDate: Date;
+  dueDate: string | Date;
   isPaid: number;
   paidAt: string | null;
 }
@@ -36,6 +36,19 @@ interface PayLaterDetailModalProps {
   onRefresh: () => void;
 }
 
+function getDaysUntilDue(dueDateInput?: string | Date) {
+  if (!dueDateInput) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(dueDateInput);
+  if (isNaN(due.getTime())) return null;
+  due.setHours(0, 0, 0, 0);
+
+  const diffTime = due.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
 export function PayLaterDetailModal({
   item,
   open,
@@ -48,10 +61,17 @@ export function PayLaterDetailModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Renaming State
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+
   useEffect(() => {
     if (open && item) {
       setInstallments(item.installments || []);
       setShowDeleteConfirm(false);
+      setIsEditingName(false);
+      setEditingName(item.name);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -69,6 +89,34 @@ export function PayLaterDetailModal({
 
   const remainingOwed = Math.max(0, totalAmountWithInterest - paidAmount);
   const progressPercent = totalInstallments > 0 ? Math.round((paidCount / totalInstallments) * 100) : 0;
+
+  // Dynamic sorting: Unpaid (0) at top in chronological order, Paid (1) at bottom
+  const sortedInstallments = [...installments].sort((a, b) => {
+    if (a.isPaid !== b.isPaid) {
+      return a.isPaid - b.isPaid;
+    }
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+  });
+
+  // Calculate days until next due date
+  const nextUnpaidInstallment = sortedInstallments.find((ins) => ins.isPaid === 0);
+  const targetDueDate = nextUnpaidInstallment ? nextUnpaidInstallment.dueDate : item.dueDate;
+  const daysUntilDue = getDaysUntilDue(targetDueDate);
+
+  let daysTilDueText = "0 days";
+  if (paidCount === totalInstallments && totalInstallments > 0) {
+    daysTilDueText = "All paid ✓";
+  } else if (daysUntilDue !== null) {
+    if (daysUntilDue > 1) {
+      daysTilDueText = `${daysUntilDue} days left`;
+    } else if (daysUntilDue === 1) {
+      daysTilDueText = "1 day left";
+    } else if (daysUntilDue === 0) {
+      daysTilDueText = "Due today";
+    } else {
+      daysTilDueText = `${Math.abs(daysUntilDue)} days overdue`;
+    }
+  }
 
   async function handleTogglePaid(insId: string, currentPaid: number) {
     const nextPaid = currentPaid === 1 ? 0 : 1;
@@ -89,6 +137,29 @@ export function PayLaterDetailModal({
       console.error("Toggle installment error:", err);
     } finally {
       setLoadingId(null);
+    }
+  }
+
+  async function handleSaveRename() {
+    const trimmed = editingName.trim();
+    if (!trimmed || isSavingName || !item) return;
+
+    setIsSavingName(true);
+    try {
+      const res = await fetch("/api/pay-later", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ payLaterId: item.id, name: trimmed }),
+      });
+
+      if (res.ok) {
+        setIsEditingName(false);
+        onRefresh();
+      }
+    } catch (err) {
+      console.error("Rename Pay Later error:", err);
+    } finally {
+      setIsSavingName(false);
     }
   }
 
@@ -128,19 +199,56 @@ export function PayLaterDetailModal({
           <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-zinc-800" />
 
           <header className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 font-bold">
                 <BsCreditCard2Back className="h-5 w-5" />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-zinc-100">{item.name}</h2>
-                <p className="text-xs text-zinc-400 font-medium">
+              <div className="min-w-0 flex-1">
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveRename();
+                      }}
+                      className="min-h-[34px] w-full rounded-xl bg-zinc-900 px-2.5 text-sm font-bold text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveRename}
+                      disabled={isSavingName}
+                      className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400"
+                    >
+                      Save
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-zinc-100 truncate">{item.name}</h2>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingName(item.name);
+                        setIsEditingName(true);
+                      }}
+                      className="text-zinc-400 hover:text-zinc-100 transition-colors"
+                      title="Rename"
+                    >
+                      <BsPencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-xs text-zinc-400 font-medium mt-0.5">
                   {item.frequency} • {item.months} {item.months === 1 ? "Payment" : "Installments"}
                   {item.interestRate > 0 && ` • ${item.interestRate}% interest`}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
+
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -169,9 +277,15 @@ export function PayLaterDetailModal({
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-zinc-500 font-medium">Total Original</p>
-                <p className="text-sm font-semibold tabular-nums text-zinc-300">
-                  {formatCurrency(totalAmountWithInterest)}
+                <p className="text-xs text-zinc-500 font-medium">Days til due</p>
+                <p
+                  className={`text-sm font-semibold tabular-nums ${
+                    daysUntilDue !== null && daysUntilDue <= 0 && paidCount < totalInstallments
+                      ? "text-rose-400 font-bold"
+                      : "text-zinc-300"
+                  }`}
+                >
+                  {daysTilDueText}
                 </p>
               </div>
             </div>
@@ -194,7 +308,7 @@ export function PayLaterDetailModal({
           <section className="mt-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Payment Schedule TO-DO List
+                Payment Schedule
               </h3>
               <span className="text-xs font-medium text-emerald-400 font-mono">
                 {paidCount} of {totalInstallments} completed
@@ -202,10 +316,10 @@ export function PayLaterDetailModal({
             </div>
 
             <div className="mt-3 space-y-2">
-              {installments.length === 0 ? (
+              {sortedInstallments.length === 0 ? (
                 <p className="py-4 text-center text-xs text-zinc-500">No installments generated</p>
               ) : (
-                installments.map((ins) => {
+                sortedInstallments.map((ins) => {
                   const isPaid = ins.isPaid === 1;
 
                   return (
