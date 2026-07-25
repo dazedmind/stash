@@ -16,6 +16,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
   const {
     categories,
     updateAllocations,
+    updateSubCategoryIcon,
     addSubCategory,
     renameSubCategoryName,
     removeSubCategory,
@@ -24,8 +25,13 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
 
   const [percentages, setPercentages] = useState<Record<string, number>>({});
   const [newSubName, setNewSubName] = useState<Record<string, string>>({});
+  const [newSubIcon, setNewSubIcon] = useState<Record<string, string>>({});
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const [editingSubName, setEditingSubName] = useState<string>("");
+  const [editingSubIconId, setEditingSubIconId] = useState<string | null>(null);
+
+  // Main Stash Icon Editing
+  const [editingCatIconId, setEditingCatIconId] = useState<string | null>(null);
 
   // New Category Creation state
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -51,6 +57,9 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
       }
       setPercentages(initial);
       setNewSubName({});
+      setNewSubIcon({});
+      setEditingSubIconId(null);
+      setEditingCatIconId(null);
       setIsAddingCategory(false);
       requestAnimationFrame(() => setVisible(true));
     } else {
@@ -67,6 +76,22 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
     if (!isValidPercentage) return;
     await updateAllocations(percentages);
     onClose();
+  }
+
+  async function handleUpdateCategoryIcon(catId: string, icon: string) {
+    try {
+      const res = await fetch("/api/finance/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: catId, icon }),
+      });
+      if (res.ok) {
+        setEditingCatIconId(null);
+        await refreshData();
+      }
+    } catch (err) {
+      console.error("Update category icon error:", err);
+    }
   }
 
   async function handleCreateCategory() {
@@ -120,7 +145,8 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
   function handleAddSub(catId: string) {
     const name = newSubName[catId]?.trim();
     if (!name) return;
-    addSubCategory(catId, name);
+    const icon = newSubIcon[catId] || "wallet";
+    addSubCategory(catId, name, icon);
     setNewSubName((prev) => ({ ...prev, [catId]: "" }));
   }
 
@@ -158,8 +184,8 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
 
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-zinc-100">Budget Category Manager</h2>
-              <p className="mt-0.5 text-xs text-zinc-400">Customize categories & income split rules</p>
+              <h2 className="text-lg font-bold text-zinc-100">Manage Stash Sheet</h2>
+              <p className="mt-0.5 text-xs text-zinc-400">Customize categories, sub-stashes & icons</p>
             </div>
             <button
               type="button"
@@ -186,13 +212,13 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
               )}
               <span>{isValidPercentage ? "Valid Allocation Split" : "Allocation Must Equal 100%"}</span>
             </div>
-            <span className="font-mono text-sm">{totalPercentage}% / 100%</span>
+            <span className="font-mono text-sm">{totalPercentage}%</span>
           </div>
 
           {/* Create New Main Category Toggle */}
           {isAddingCategory ? (
             <div className="mt-4 rounded-2xl bg-zinc-900/60 p-4">
-              <h3 className="text-xs font-bold text-emerald-400">Add New Category</h3>
+              <h3 className="text-xs font-bold text-emerald-400">Add New Main Stash Category</h3>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <input
                   type="text"
@@ -212,7 +238,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
 
               {/* Icon Chooser */}
               <div className="mt-3">
-                <span className="text-[11px] font-medium text-zinc-400">Choose Icon</span>
+                <span className="text-[11px] font-medium text-zinc-400">Choose Main Stash Icon</span>
                 <div className="mt-1.5 flex flex-wrap gap-2">
                   {CATEGORY_ICON_OPTIONS.map((opt) => {
                     const IconComp = opt.icon;
@@ -260,7 +286,7 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
               className="mt-3 flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-900/40 text-xs font-semibold text-emerald-400 transition-all hover:bg-zinc-900"
             >
               <BsPlusLg className="h-3.5 w-3.5" />
-              Add Main Category
+              Add Main Stash Category
             </button>
           )}
 
@@ -273,10 +299,28 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                 <div key={cat.id} className="rounded-2xl bg-zinc-900/40 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-emerald-400">
-                        <CategoryIcon iconName={cat.icon} className="h-4 w-4" />
+                      {/* Main Stash Icon Button with Change Icon Chooser */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingCatIconId(editingCatIconId === cat.id ? null : cat.id)}
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-800 text-emerald-400 hover:bg-zinc-700 transition-colors"
+                        title="Change Main Stash Icon"
+                      >
+                        <CategoryIcon iconName={cat.icon} className="h-4.5 w-4.5" />
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-semibold text-zinc-100">{cat.name}</h3>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCatIconId(editingCatIconId === cat.id ? null : cat.id)}
+                          className="text-zinc-500 hover:text-emerald-400 transition-colors"
+                          title="Change Main Stash Icon"
+                        >
+                          <BsPencil className="h-3 w-3" />
+                        </button>
                       </div>
-                      <h3 className="font-semibold text-zinc-100">{cat.name}</h3>
+
                       {categories.length > 1 && (
                         <button
                           type="button"
@@ -305,6 +349,36 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                     </div>
                   </div>
 
+                  {/* Inline Icon Picker for Main Stash Category */}
+                  {editingCatIconId === cat.id && (
+                    <div className="mt-3 rounded-xl bg-zinc-950 p-3 border border-zinc-800/60">
+                      <span className="text-[11px] font-medium text-zinc-400">
+                        Choose icon for "{cat.name}" Main Stash
+                      </span>
+                      <div className="mt-2 flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                        {CATEGORY_ICON_OPTIONS.map((opt) => {
+                          const IconComp = opt.icon;
+                          const isSelected = (cat.icon || "wallet") === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handleUpdateCategoryIcon(cat.id, opt.id)}
+                              className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                                isSelected
+                                  ? "bg-emerald-500 text-zinc-950 font-bold"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-100"
+                              }`}
+                              title={opt.label}
+                            >
+                              <IconComp className="h-3.5 w-3.5" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <input
                     type="range"
                     min="0"
@@ -317,81 +391,133 @@ export function EditAllocationModal({ open, onClose }: EditAllocationModalProps)
                     className="mt-3 w-full accent-emerald-500"
                   />
 
-                  {/* Subcategories list */}
+                  {/* Subcategories list with Icon Editing */}
                   <div className="mt-3 pt-3 border-t border-zinc-800/40">
-                    <div className="space-y-1.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                      Sub-stashes
+                    </span>
+
+                    <div className="mt-2 space-y-2">
                       {cat.subcategories.map((sub) => (
-                        <div
-                          key={sub.id}
-                          className="flex items-center justify-between rounded-xl bg-zinc-950/80 px-3 py-2 text-xs"
-                        >
-                          {editingSubId === sub.id ? (
-                            <div className="flex flex-1 items-center gap-2">
-                              <input
-                                type="text"
-                                value={editingSubName}
-                                onChange={(e) => setEditingSubName(e.target.value)}
-                                className="flex-1 rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white outline-none"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleSaveRename(sub.id)}
-                                className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-bold text-zinc-950"
-                              >
-                                Save
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="font-medium text-zinc-200">{sub.name}</span>
-                              <div className="flex items-center gap-3 text-zinc-400">
-                                <span className="tabular-nums font-mono text-zinc-300">
-                                  {formatCurrency(sub.digital + sub.cash)}
-                                </span>
+                        <div key={sub.id} className="rounded-xl bg-zinc-950/80 p-2.5 text-xs">
+                          <div className="flex items-center justify-between">
+                            {editingSubId === sub.id ? (
+                              <div className="flex flex-1 items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingSubName}
+                                  onChange={(e) => setEditingSubName(e.target.value)}
+                                  className="flex-1 rounded-lg bg-zinc-900 px-2 py-1 text-xs text-white outline-none"
+                                />
                                 <button
                                   type="button"
-                                  onClick={() => handleStartRename(sub.id, sub.name)}
-                                  className="text-zinc-400 hover:text-zinc-100 transition-colors"
-                                  title="Rename"
+                                  onClick={() => handleSaveRename(sub.id)}
+                                  className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-bold text-zinc-950"
                                 >
-                                  <BsPencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeSubCategory(sub.id)}
-                                  className="text-zinc-400 hover:text-rose-400 transition-colors"
-                                  title="Delete"
-                                >
-                                  <BsTrash className="h-3.5 w-3.5" />
+                                  Save
                                 </button>
                               </div>
-                            </>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
+                                    }
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 hover:bg-zinc-800 transition-colors"
+                                    title="Change Icon"
+                                  >
+                                    <CategoryIcon iconName={sub.icon} className="h-3.5 w-3.5" />
+                                  </button>
+                                  <span className="font-semibold text-zinc-200">{sub.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-zinc-400">
+                                  <span className="tabular-nums font-mono text-zinc-300">
+                                    {formatCurrency(sub.digital + sub.cash)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
+                                    }
+                                    className="text-zinc-400 hover:text-emerald-400 transition-colors"
+                                    title="Change Icon"
+                                  >
+                                    <BsPencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSubCategory(sub.id)}
+                                    className="text-zinc-400 hover:text-rose-400 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <BsTrash className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Inline Sub-stash Icon Picker */}
+                          {editingSubIconId === sub.id && (
+                            <div className="mt-2.5 rounded-lg bg-zinc-900 p-2.5 border border-zinc-800/60">
+                              <span className="text-[10px] font-medium text-zinc-400">
+                                Choose Icon for "{sub.name}"
+                              </span>
+                              <div className="mt-1.5 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                                {CATEGORY_ICON_OPTIONS.map((opt) => {
+                                  const IconComp = opt.icon;
+                                  const isSelected = (sub.icon || "wallet") === opt.id;
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => {
+                                        updateSubCategoryIcon(sub.id, opt.id);
+                                        setEditingSubIconId(null);
+                                      }}
+                                      className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${
+                                        isSelected
+                                          ? "bg-emerald-500 text-zinc-950 font-bold"
+                                          : "bg-zinc-950 text-zinc-400 hover:text-zinc-100"
+                                      }`}
+                                      title={opt.label}
+                                    >
+                                      <IconComp className="h-3.5 w-3.5" />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
 
-                    {/* Add subcategory */}
-                    <div className="mt-2.5 flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={`Add sub-stash to ${cat.name}...`}
-                        value={newSubName[cat.id] || ""}
-                        onChange={(e) =>
-                          setNewSubName((prev) => ({ ...prev, [cat.id]: e.target.value }))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleAddSub(cat.id);
-                        }}
-                        className="min-h-[36px] flex-1 rounded-xl bg-zinc-950 px-3 text-xs text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleAddSub(cat.id)}
-                        className="min-h-[36px] rounded-xl bg-zinc-800 px-3 text-xs font-semibold text-emerald-400 transition-colors hover:bg-zinc-700 flex items-center gap-1"
-                      >
-                        <BsPlusLg className="h-3 w-3" /> Add
-                      </button>
+                    {/* Add sub-stash */}
+                    <div className="mt-3 space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Add sub-stash to ${cat.name}...`}
+                          value={newSubName[cat.id] || ""}
+                          onChange={(e) =>
+                            setNewSubName((prev) => ({ ...prev, [cat.id]: e.target.value }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleAddSub(cat.id);
+                          }}
+                          className="min-h-[36px] flex-1 rounded-xl bg-zinc-950 px-3 text-xs text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddSub(cat.id)}
+                          className="min-h-[36px] rounded-xl bg-zinc-800 px-3 text-xs font-semibold text-emerald-400 transition-colors hover:bg-zinc-700 flex items-center gap-1"
+                        >
+                          <BsPlusLg className="h-3 w-3" /> Add Sub-stash
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

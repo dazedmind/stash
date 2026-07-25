@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { categoryId, name } = body;
+    const { categoryId, name, icon } = body;
     const trimmedName = name?.trim();
 
     if (!categoryId || !trimmedName) {
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       cash: 0,
       allocated: 0,
       isHidden: 0,
+      icon: icon || "wallet",
     });
 
     return Response.json({ success: true, id: newSubId });
@@ -54,7 +55,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { subCategoryId, name, isHidden } = body;
+    const { subCategoryId, name, isHidden, icon } = body;
 
     if (!subCategoryId) {
       return Response.json({ error: "Subcategory ID required" }, { status: 400 });
@@ -66,6 +67,9 @@ export async function PATCH(req: Request) {
     }
     if (typeof isHidden === "boolean") {
       updatePayload.isHidden = isHidden ? 1 : 0;
+    }
+    if (icon && typeof icon === "string") {
+      updatePayload.icon = icon;
     }
 
     if (Object.keys(updatePayload).length === 0) {

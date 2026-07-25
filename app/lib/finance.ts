@@ -8,6 +8,7 @@ export interface SubCategory {
   cash: number;
   allocated: number;
   isHidden?: boolean;
+  icon?: string;
 }
 
 export interface MainCategory {
@@ -42,6 +43,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "piggy",
         },
         {
           id: "savings-wants",
@@ -51,6 +53,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "bag",
         },
       ],
     },
@@ -69,6 +72,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "rent",
         },
         {
           id: "liabilities-electricity",
@@ -78,6 +82,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "lightning",
         },
       ],
     },
@@ -96,6 +101,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "food",
         },
         {
           id: "expenses-transpo",
@@ -105,6 +111,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "car",
         },
         {
           id: "expenses-clothes",
@@ -114,6 +121,7 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          icon: "bag",
         },
       ],
     },
@@ -149,6 +157,7 @@ export function addIncomeToCategories(categories: MainCategory[], income: number
         cash: 0,
         allocated: catAllocation,
         isHidden: false,
+        icon: "wallet",
       };
       return { ...cat, subcategories: [newSub] };
     }
@@ -295,6 +304,19 @@ export function toggleHideSubCategoryInCategories(
   }));
 }
 
+export function updateSubCategoryIconInCategories(
+  categories: MainCategory[],
+  subCategoryId: string,
+  icon: string
+): MainCategory[] {
+  return categories.map((cat) => ({
+    ...cat,
+    subcategories: cat.subcategories.map((sub) =>
+      sub.id === subCategoryId ? { ...sub, icon } : sub
+    ),
+  }));
+}
+
 export function updateCategoryPercentages(
   categories: MainCategory[],
   newPercentages: Record<string, number>,
@@ -309,6 +331,7 @@ export function addSubCategoryToCategory(
   categories: MainCategory[],
   categoryId: string,
   subName: string,
+  icon: string = "wallet"
 ): MainCategory[] {
   const trimmed = subName.trim();
   if (!trimmed) return categories;
@@ -326,6 +349,7 @@ export function addSubCategoryToCategory(
       cash: 0,
       allocated: 0,
       isHidden: false,
+      icon,
     };
 
     return {

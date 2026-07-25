@@ -44,25 +44,29 @@ export async function PATCH(req: Request) {
 
     const body = await req.json();
     const { categoryId, name, tag, icon } = body;
-    const trimmedName = name?.trim();
 
-    if (!categoryId || !trimmedName) {
-      return Response.json({ error: "Category ID and name are required" }, { status: 400 });
+    if (!categoryId) {
+      return Response.json({ error: "Category ID is required" }, { status: 400 });
+    }
+
+    const updatePayload: Record<string, any> = {};
+    if (name && typeof name === "string") updatePayload.name = name.trim();
+    if (tag && typeof tag === "string") updatePayload.tag = tag;
+    if (icon && typeof icon === "string") updatePayload.icon = icon;
+
+    if (Object.keys(updatePayload).length === 0) {
+      return Response.json({ error: "No fields to update" }, { status: 400 });
     }
 
     await db
       .update(categories)
-      .set({
-        name: trimmedName,
-        ...(tag ? { tag } : {}),
-        ...(icon ? { icon } : {}),
-      })
+      .set(updatePayload)
       .where(and(eq(categories.id, categoryId), eq(categories.userId, user.id)));
 
     return Response.json({ success: true });
   } catch (error) {
-    console.error("Rename category error:", error);
-    return Response.json({ error: "Failed to rename category" }, { status: 500 });
+    console.error("Update category error:", error);
+    return Response.json({ error: "Failed to update category" }, { status: 500 });
   }
 }
 

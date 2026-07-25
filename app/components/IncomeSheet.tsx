@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { BsPlusLg } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 import { useApp } from "../lib/store";
+import { StashSelectCard } from "./StashSelectCard";
 
 interface IncomeSheetProps {
   open: boolean;
@@ -110,29 +111,18 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
               className="min-h-[52px] w-full rounded-xl bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
             />
-            
           </div>
         </label>
 
-        {/* Manual Target Stash Selector */}
+        {/* Manual Target Stash Selector using StashSelectCard */}
         {allocationMode === "manual" && (
           <div className="mt-4">
-            <span className="text-xs text-zinc-400 font-medium">Target Stash</span>
-            <select
-              value={selectedSubId}
-              onChange={(e) => setSelectedSubId(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-            >
-              {categories.map((cat) => (
-                <optgroup key={cat.id} label={cat.name}>
-                  {cat.subcategories.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {cat.name} ({sub.name})
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <StashSelectCard
+              label="Target Sub-stash"
+              selectedSubId={selectedSubId}
+              categories={categories}
+              onSelect={(newSub) => setSelectedSubId(newSub)}
+            />
           </div>
         )}
 
@@ -159,7 +149,7 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
           </div>
         )}
 
-        {/* Positive Button - Green */}
+        {/* Positive Button */}
         <button
           type="button"
           disabled={!isValid}
