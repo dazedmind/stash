@@ -42,9 +42,11 @@ export function StashCard({
             <h3 className="truncate font-semibold text-base text-zinc-100 transition-colors">
               {category.name}
             </h3>
-            <span className="rounded-md bg-zinc-500/10 px-2 py-0.5 font-medium text-zinc-400">
-              {category.percentage}%
-            </span>
+            {category.percentage > 0 && (
+              <span className="rounded-md bg-zinc-500/10 px-2 py-0.5 font-medium text-zinc-400">
+                {category.percentage}%
+              </span>
+            )}
           </div>
         </div>
 
@@ -58,20 +60,27 @@ export function StashCard({
         {category.subcategories.map((sub) => (
           <span
             key={sub.id}
-            className={`inline-flex items-center gap-1 rounded-lg bg-zinc-950/50 px-2.5 py-1 text-xs text-zinc-400 ${
+            className={`inline-flex items-center gap-1.5 rounded-lg bg-zinc-950/50 px-2.5 py-1 text-xs text-zinc-400 ${
               sub.isHidden ? "opacity-70" : ""
             }`}
           >
-            {sub.isHidden && <BsEyeSlash className="h-3 w-3 text-amber-400" title="Hidden from total balance" />}
+            {sub.isHidden ? (
+              <BsEyeSlash className="h-3 w-3 text-amber-400" title="Hidden from total balance" />
+            ) : (
+              <CategoryIcon iconName={sub.icon} className="h-3 w-3 text-emerald-400" />
+            )}
             <span className="font-medium text-zinc-300">{sub.name}</span>
-            {/* <span className="font-mono text-zinc-300">{formatCurrency(sub.digital + sub.cash)}</span> */}
           </span>
         ))}
       </div>
 
-      <div className="mt-3.5 flex flex-col items-start gap-2 border-t border-zinc-800/40 pt-3 text-xs text-zinc-400">
-        <span>Digital <strong className="text-zinc-200 font-mono ml-1">{formatCurrency(digital)}</strong></span>
-        <span>Cash <strong className="text-zinc-200 font-mono ml-1">{formatCurrency(cash)}</strong></span>
+      <div className="mt-3.5 flex justify-between border-t border-zinc-800/40 pt-3 text-xs">
+        <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-800/50 px-3 py-1 font-medium text-green-200">
+          Digital: <strong className="font-mono ">{formatCurrency(digital)}</strong>
+        </span>
+        <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-800/50 px-3 py-1 font-medium text-emerald-200">
+          Cash: <strong className="font-mono ">{formatCurrency(cash)}</strong>
+        </span>
       </div>
     </article>
   );

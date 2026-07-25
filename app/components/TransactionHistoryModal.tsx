@@ -89,6 +89,9 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
             transactions.map((tx) => {
               const isIncome = tx.type === "income";
               const isExpense = tx.type === "expense";
+              const isInternalTransfer = tx.type === "transfer_internal";
+              const isSubTransfer = tx.type === "transfer_sub";
+
               const dateStr = new Date(tx.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -96,15 +99,35 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
                 minute: "2-digit",
               });
 
+              const isToCashInternal =
+                tx.source === "digital_to_cash" || tx.description?.toLowerCase().includes("to cash");
+              const isDigitalSource = tx.source === "digital" || tx.source === "digital_to_cash";
+
+              const renderTitle = () => {
+                if (isIncome) return "Income Deposit";
+                if (isExpense) return `Expense: ${tx.subCategoryName || "Stash"}`;
+                if (isSubTransfer && tx.description && tx.description.includes(" to ")) {
+                  const parts = tx.description.split(" to ");
+                  return (
+                    <span>
+                      <strong className="font-bold text-zinc-100">{parts[0]}</strong>{" "}
+                      <span className="font-normal text-zinc-400 text-xs">to</span>{" "}
+                      <strong className="font-bold text-zinc-100">{parts[1]}</strong>
+                    </span>
+                  );
+                }
+                return tx.description || "Stash Transfer";
+              };
+
               return (
                 <div
                   key={tx.id}
                   className="rounded-2xl bg-zinc-900/40 p-4 transition-all"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div
-                        className={`flex shrink-0 h-9 w-9 items-center justify-center rounded-full font-bold ${
+                        className={`flex shrink-0 h-9 w-9 items-center justify-center rounded-full font-bold mt-0.5 ${
                           isIncome
                             ? "bg-emerald-500/10 text-emerald-400"
                             : isExpense
@@ -120,19 +143,57 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
                           <BsArrowLeftRight className="h-4 w-4" />
                         )}
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm text-zinc-100 text-wrap">
-                          {isIncome
-                            ? "Income Deposit"
-                            : isExpense
-                              ? `Expense: ${tx.subCategoryName || "Stash"}`
-                              : `Transfer: ${tx.description || "Stash Transfer"}`}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="font-semibold text-sm text-zinc-100 leading-snug">
+                          {renderTitle()}
                         </p>
-                        <p className="text-[11px] text-zinc-400">{dateStr}</p>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Direction Pill Badges */}
+                          {isInternalTransfer && (
+                            <div className="inline-flex items-center gap-1">
+                              {isToCashInternal ? (
+                                <>
+                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
+                                    Digital
+                                  </span>
+                                  <span className="text-xs text-zinc-400 font-bold">→</span>
+                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
+                                    Cash
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
+                                    Cash
+                                  </span>
+                                  <span className="text-xs text-zinc-400 font-bold">→</span>
+                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
+                                    Digital
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {(isSubTransfer || isExpense) && (
+                            <span
+                              className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                                isDigitalSource
+                                  ? "text-green-300 bg-green-300/10"
+                                  : "text-[#ffff64] bg-[#ffff64]/10"
+                              }`}
+                            >
+                              {isDigitalSource ? "Digital" : "Cash"}
+                            </span>
+                          )}
+
+                          <span className="text-[11px] text-zinc-400">{dateStr}</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p
                         className={`text-base font-bold tabular-nums ${
                           isIncome
@@ -148,16 +209,16 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
                     </div>
                   </div>
 
-                  {/* Note display for Expense / Description */}
+                  {/* Note display for Expense */}
                   {isExpense && tx.description && (
-                    <div className="mt-2 text-xs text-zinc-400 font-medium">
-                      <span className="text-zinc-200">{tx.description}</span>
+                    <div className="mt-2 text-xs text-zinc-400 font-medium pl-12">
+                      <span className="text-zinc-300">{tx.description}</span>
                     </div>
                   )}
 
                   {/* Income per-category allocation breakdown display */}
                   {isIncome && tx.breakdown && Object.keys(tx.breakdown).length > 0 && (
-                    <div className="mt-3 border-t border-zinc-800/40 pt-2.5">
+                    <div className="mt-3 border-t border-zinc-800/40 pt-2.5 pl-12">
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                         Allocated per budget category:
                       </span>

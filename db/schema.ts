@@ -43,6 +43,7 @@ export const subcategories = pgTable("subcategories", {
   cash: integer("cash").notNull().default(0),
   allocated: integer("allocated").notNull().default(0),
   isHidden: integer("is_hidden").notNull().default(0), // 0 = visible in total balance, 1 = hidden from total balance
+  icon: text("icon").notNull().default("wallet"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

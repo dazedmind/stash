@@ -45,6 +45,7 @@ export async function GET(req: Request) {
           cash: sub.cash,
           allocated: sub.allocated,
           isHidden: Boolean(sub.isHidden),
+          icon: sub.icon || "wallet",
         })),
     }));
 

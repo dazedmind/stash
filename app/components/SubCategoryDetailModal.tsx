@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsArrowLeftRight, BsDashLg, BsX } from "react-icons/bs";
+import { BsArrowLeftRight, BsDashLg, BsPencil, BsX } from "react-icons/bs";
 import { formatCurrency, getCategoryTotalBalance, type MainCategory, type SubCategory } from "../lib/finance";
 import { useApp } from "../lib/store";
+import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "./CategoryIcon";
 import { Switch } from "./ui/switch";
 
 interface SubCategoryDetailModalProps {
@@ -21,11 +22,13 @@ export function SubCategoryDetailModal({
   onTransferSub,
   onExpenseSub,
 }: SubCategoryDetailModalProps) {
-  const { categories, toggleHideSubCategory } = useApp();
+  const { categories, toggleHideSubCategory, updateSubCategoryIcon } = useApp();
   const [visible, setVisible] = useState(false);
+  const [editingSubIconId, setEditingSubIconId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
+      setEditingSubIconId(null);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -61,7 +64,8 @@ export function SubCategoryDetailModal({
           <div>
             <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stashes</h2>
             <p className="mt-0.5 text-xs text-zinc-400 font-medium">
-              {liveCategory.percentage}% Allocation • {formatCurrency(totalCatBalance)}
+              {liveCategory.percentage > 0 ? `${liveCategory.percentage}% Allocation • ` : "Unallocated • "}
+              {formatCurrency(totalCatBalance)}
             </p>
           </div>
           <button
@@ -89,26 +93,52 @@ export function SubCategoryDetailModal({
                   className="rounded-2xl bg-zinc-900/40 p-4 transition-all hover:bg-zinc-900/70"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-base text-zinc-100">{sub.name}</h3>
+                    <div className="flex items-center gap-3">
+                      {/* Sub-stash Custom Icon with Change Icon Toggle */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
+                        }
+                        className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 hover:bg-zinc-800 transition-colors"
+                        title="Change Sub-stash Icon"
+                      >
+                        <CategoryIcon iconName={sub.icon} className="h-4.5 w-4.5" />
+                      </button>
 
-                      {/* Hide from total balance Switch (Default OFF = included, ON = hidden) */}
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <Switch
-                          id={`hide-switch-${sub.id}`}
-                          checked={isHidden}
-                          onCheckedChange={() => toggleHideSubCategory(sub.id)}
-                        />
-                        <label
-                          htmlFor={`hide-switch-${sub.id}`}
-                          className="cursor-pointer text-[11px] font-medium select-none"
-                        >
-                          {isHidden ? (
-                            <span className="text-zinc-400 font-semibold">Hide from total</span>
-                          ) : (
-                            <span className="text-zinc-400">Hide from total</span>
-                          )}
-                        </label>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-semibold text-base text-zinc-100">{sub.name}</h3>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
+                            }
+                            className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                            title="Choose Icon"
+                          >
+                            <BsPencil className="h-3 w-3" />
+                          </button>
+                        </div>
+
+                        {/* Hide from total balance Switch */}
+                        <div className="mt-1 flex items-center gap-2">
+                          <Switch
+                            id={`hide-switch-${sub.id}`}
+                            checked={isHidden}
+                            onCheckedChange={() => toggleHideSubCategory(sub.id)}
+                          />
+                          <label
+                            htmlFor={`hide-switch-${sub.id}`}
+                            className="cursor-pointer text-[11px] font-medium select-none"
+                          >
+                            {isHidden ? (
+                              <span className="text-zinc-400 font-semibold">Hide from total</span>
+                            ) : (
+                              <span className="text-zinc-400">Hide from total</span>
+                            )}
+                          </label>
+                        </div>
                       </div>
                     </div>
 
@@ -117,9 +147,46 @@ export function SubCategoryDetailModal({
                     </p>
                   </div>
 
-                  <div className="mt-2.5 flex flex-col gap-2 justify-between border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
-                    <span>Digital {formatCurrency(sub.digital)}</span>
-                    <span>Cash {formatCurrency(sub.cash)}</span>
+                  {/* Icon Chooser for Sub-stash */}
+                  {editingSubIconId === sub.id && (
+                    <div className="mt-3 rounded-xl bg-zinc-950 p-3 border border-zinc-800/60">
+                      <span className="text-[11px] font-medium text-zinc-400">
+                        Choose icon for "{sub.name}"
+                      </span>
+                      <div className="mt-2 flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                        {CATEGORY_ICON_OPTIONS.map((opt) => {
+                          const IconComp = opt.icon;
+                          const isSelected = (sub.icon || "wallet") === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                updateSubCategoryIcon(sub.id, opt.id);
+                                setEditingSubIconId(null);
+                              }}
+                              className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                                isSelected
+                                  ? "bg-emerald-500 text-zinc-950 font-bold"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-100"
+                              }`}
+                              title={opt.label}
+                            >
+                              <IconComp className="h-3.5 w-3.5" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 flex justify-between border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
+                    <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-400/10 px-3 py-1 font-medium text-green-200">
+                      Digital: <strong className="font-mono ">{formatCurrency(sub.digital)}</strong>
+                    </span>
+                    <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-400/10 px-3 py-1 font-medium text-emerald-200">
+                      Cash: <strong className="font-mono ">{formatCurrency(sub.cash)}</strong>
+                    </span>
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">

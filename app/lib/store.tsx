@@ -26,6 +26,7 @@ import {
   transferBetweenCashDigital,
   transferBetweenSubStashes,
   updateCategoryPercentages,
+  updateSubCategoryIconInCategories,
   type MainCategory,
   type SubCategory,
 } from "./finance";
@@ -74,8 +75,9 @@ interface AppContextValue {
     source: "digital" | "cash"
   ) => Promise<void>;
   toggleHideSubCategory: (subCategoryId: string) => Promise<void>;
+  updateSubCategoryIcon: (subCategoryId: string, icon: string) => Promise<void>;
   updateAllocations: (newPercentages: Record<string, number>) => Promise<void>;
-  addSubCategory: (categoryId: string, name: string) => Promise<void>;
+  addSubCategory: (categoryId: string, name: string, icon?: string) => Promise<void>;
   renameSubCategoryName: (subCategoryId: string, newName: string) => Promise<void>;
   removeSubCategory: (subCategoryId: string) => Promise<void>;
   setMonthlyIncome: (amount: number) => Promise<void>;
@@ -246,6 +248,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [user, fetchFinanceData]
   );
 
+  const updateSubCategoryIcon = useCallback(
+    async (subCategoryId: string, icon: string) => {
+      setCategories((prev) => updateSubCategoryIconInCategories(prev, subCategoryId, icon));
+
+      if (user) {
+        try {
+          await fetch("/api/finance/subcategories", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subCategoryId, icon }),
+          });
+          await fetchFinanceData();
+        } catch (err) {
+          console.error("Update subcategory icon error:", err);
+        }
+      }
+    },
+    [user, fetchFinanceData]
+  );
+
   const transferCashDigital = useCallback(
     async (subCategoryId: string, amount: number, direction: "to-cash" | "to-digital") => {
       setCategories((prev) => transferBetweenCashDigital(prev, subCategoryId, amount, direction));
@@ -307,15 +329,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const addSubCategory = useCallback(
-    async (categoryId: string, name: string) => {
-      setCategories((prev) => addSubCategoryToCategory(prev, categoryId, name));
+    async (categoryId: string, name: string, icon: string = "wallet") => {
+      setCategories((prev) => addSubCategoryToCategory(prev, categoryId, name, icon));
 
       if (user) {
         try {
           await fetch("/api/finance/subcategories", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ categoryId, name }),
+            body: JSON.stringify({ categoryId, name, icon }),
           });
           await fetchFinanceData();
         } catch (err) {
@@ -411,6 +433,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       transferCashDigital,
       transferSubStash,
       toggleHideSubCategory,
+      updateSubCategoryIcon,
       updateAllocations,
       addSubCategory,
       renameSubCategoryName,
@@ -432,6 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     transferCashDigital,
     transferSubStash,
     toggleHideSubCategory,
+    updateSubCategoryIcon,
     updateAllocations,
     addSubCategory,
     renameSubCategoryName,
