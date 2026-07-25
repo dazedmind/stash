@@ -65,8 +65,7 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
         <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-zinc-800" />
 
         <div className="flex items-center gap-2 text-emerald-400">
-          <BsPlusLg className="h-4 w-4" />
-          <h2 className="text-base font-semibold text-zinc-100">Add Income</h2>
+          <h2 className="text-xl font-semibold text-zinc-100">Add Income</h2>
         </div>
 
         {/* Allocation Mode Selector */}
@@ -106,10 +105,12 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={amount}
+              value={amount.replace(/^0+/, "")}
+              placeholder="0"
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
               className="min-h-[52px] w-full rounded-xl bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
             />
+            
           </div>
         </label>
 

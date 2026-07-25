@@ -9,6 +9,11 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Stash",
   },
+  icons: {
+    apple: [
+      { url: 'stash-logo.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

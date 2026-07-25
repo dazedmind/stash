@@ -60,7 +60,7 @@ export function ActionChoiceSheet({
             className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-400 transition-all active:scale-95 hover:border-emerald-500/40 hover:bg-emerald-500/20"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-zinc-950">
-              <BsPlusLg className="h-5 w-5" />
+              <BsPlusLg className="h-5 w-5" strokeWidth={1.5}/>
             </div>
             <span className="text-sm font-semibold">Income</span>
           </button>
@@ -72,10 +72,10 @@ export function ActionChoiceSheet({
               onClose();
               onSelectExpense();
             }}
-            className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-rose-400 transition-all active:scale-95 hover:border-rose-500/40 hover:bg-rose-500/20"
+            className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4 text-red-400 transition-all active:scale-95 hover:border-rose-500/40 hover:bg-rose-500/20"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500 text-zinc-950">
-              <BsDashLg className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-zinc-950">
+              <BsDashLg className="h-5 w-5" strokeWidth={1.5}/>
             </div>
             <span className="text-sm font-semibold">Expense</span>
           </button>

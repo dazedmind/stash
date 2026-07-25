@@ -78,7 +78,6 @@ export function ExpenseSheet({
         <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-zinc-800" />
 
         <div className="flex items-center gap-2 text-rose-400">
-          <BsDashLg className="h-4 w-4" />
           <h2 className="text-xl font-semibold text-zinc-100">Deduct Expense</h2>
         </div>
 
