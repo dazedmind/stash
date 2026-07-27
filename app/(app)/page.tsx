@@ -69,7 +69,7 @@ export default function HomePage() {
 
             <span className="-space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">STASH</p>
-              <h1 className="text-xl font-bold tracking-tight text-zinc-100">Overview</h1>
+              <h1 className="text-xl font-bold tracking-tight text-zinc-100">Home</h1>
             </span>
           </div>
 

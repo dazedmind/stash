@@ -24,10 +24,12 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
   const [transactions, setTransactions] = useState<TransactionLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<"all" | "expense" | "income" | "transfers">("all");
 
   useEffect(() => {
     if (open) {
       setLoading(true);
+      setTypeFilter("all");
       requestAnimationFrame(() => setVisible(true));
       fetch("/api/finance/transactions")
         .then((res) => res.json())
@@ -44,6 +46,14 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
   }, [open]);
 
   if (!open) return null;
+
+  const filteredTransactions = transactions.filter((tx) => {
+    if (typeFilter === "expense") return tx.type === "expense";
+    if (typeFilter === "income") return tx.type === "income";
+    if (typeFilter === "transfers")
+      return tx.type === "transfer_internal" || tx.type === "transfer_sub";
+    return true;
+  });
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal="true">
@@ -78,15 +88,38 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
           </button>
         </header>
 
+        {/* Type Filter Buttons Bar */}
+        <div className="mt-3.5 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: "all", label: "All" },
+            { id: "expense", label: "Expense" },
+            { id: "income", label: "Income" },
+            { id: "transfers", label: "Transfers" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTypeFilter(tab.id as any)}
+              className={`shrink-0 min-h-[32px] rounded-xl px-3.5 text-xs font-semibold transition-all ${
+                typeFilter === tab.id
+                  ? "bg-emerald-500 text-zinc-950 font-bold shadow-xs"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="mt-4 space-y-3">
           {loading ? (
             <div className="py-8 text-center text-xs text-zinc-500">Loading history…</div>
-          ) : transactions.length === 0 ? (
+          ) : filteredTransactions.length === 0 ? (
             <div className="rounded-2xl bg-zinc-900/40 p-6 text-center text-xs text-zinc-500">
-              No transactions recorded yet.
+              No {typeFilter !== "all" ? typeFilter : ""} transactions recorded yet.
             </div>
           ) : (
-            transactions.map((tx) => {
+            filteredTransactions.map((tx) => {
               const isIncome = tx.type === "income";
               const isExpense = tx.type === "expense";
               const isInternalTransfer = tx.type === "transfer_internal";

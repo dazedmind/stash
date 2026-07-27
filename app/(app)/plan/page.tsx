@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { BsClockHistory, BsPencil } from "react-icons/bs";
 import { CategoryIcon } from "../../components/CategoryIcon";
-import { EditAllocationModal } from "../../components/EditAllocationModal";
 import { TransactionHistoryModal } from "../../components/TransactionHistoryModal";
 import { formatCurrency } from "../../lib/finance";
 import { useApp } from "../../lib/store";
 
 export default function PlanPage() {
   const { monthlyIncome, allocationTotals, categories, setMonthlyIncome } = useApp();
-  const [editAllocOpen, setEditAllocOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
@@ -32,14 +31,13 @@ export default function PlanPage() {
               <BsClockHistory className="h-3.5 w-3.5 text-emerald-400" />
               History
             </button>
-            <button
-              type="button"
-              onClick={() => setEditAllocOpen(true)}
+            <Link
+              href="/stashes/manage"
               className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-zinc-800"
             >
               <BsPencil className="h-3 w-3" />
               Edit Rules
-            </button>
+            </Link>
           </div>
         </header>
 
@@ -58,7 +56,9 @@ export default function PlanPage() {
                     <CategoryIcon iconName={cat.icon} className="h-4 w-4 text-emerald-400" />
                     <span className="font-semibold text-zinc-200">{cat.name}</span>
                   </div>
-                  <span className="font-semibold text-emerald-400">{cat.percentage}%</span>
+                  <span className="font-semibold text-emerald-400">
+                    {cat.percentage > 0 ? `${cat.percentage}%` : "Unallocated"}
+                  </span>
                 </div>
                 <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-zinc-900">
                   <div
@@ -102,7 +102,9 @@ export default function PlanPage() {
           <div className="mt-3 space-y-1 rounded-xl bg-zinc-950/70 p-3 text-xs text-zinc-400">
             {categories.map((cat) => (
               <div key={cat.id} className="flex justify-between">
-                <span>{cat.name} ({cat.percentage}%)</span>
+                <span>
+                  {cat.name} ({cat.percentage > 0 ? `${cat.percentage}%` : "Unallocated"})
+                </span>
                 <span className="tabular-nums font-mono text-zinc-200">
                   {formatCurrency(Math.round(monthlyIncome * (cat.percentage / 100)))}
                 </span>
@@ -112,7 +114,6 @@ export default function PlanPage() {
         </section>
       </div>
 
-      <EditAllocationModal open={editAllocOpen} onClose={() => setEditAllocOpen(false)} />
       <TransactionHistoryModal open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </>
   );

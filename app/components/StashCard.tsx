@@ -35,7 +35,7 @@ export function StashCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-950 text-emerald-400 font-bold">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-black font-bold">
             <CategoryIcon iconName={category.icon} className="h-5 w-5" />
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-400">
@@ -56,7 +56,7 @@ export function StashCard({
       </div>
 
       {/* Subcategories list */}
-      <div className="mt-3.5 flex flex-wrap gap-1.5">
+      {/* <div className="mt-3.5 flex flex-wrap gap-1.5">
         {category.subcategories.map((sub) => (
           <span
             key={sub.id}
@@ -72,7 +72,7 @@ export function StashCard({
             <span className="font-medium text-zinc-300">{sub.name}</span>
           </span>
         ))}
-      </div>
+      </div> */}
 
       <div className="mt-3.5 flex justify-between border-t border-zinc-800/40 pt-3 text-xs">
         <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-800/50 px-3 py-1 font-medium text-green-200">
