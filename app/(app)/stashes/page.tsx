@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BsClockHistory, BsPencil } from "react-icons/bs";
+import Link from "next/link";
+import { BsPencil } from "react-icons/bs";
 import { ExpenseSheet } from "../../components/ExpenseSheet";
 import { StashCard } from "../../components/StashCard";
 import { SubCategoryDetailModal } from "../../components/SubCategoryDetailModal";
@@ -9,13 +10,11 @@ import { SubStashTransferSheet } from "../../components/SubStashTransferSheet";
 import { TransactionHistoryModal } from "../../components/TransactionHistoryModal";
 import { formatCurrency, type MainCategory } from "../../lib/finance";
 import { useApp } from "../../lib/store";
-import { EditAllocationModal } from "../../components/EditAllocationModal";
 
 export default function StashesPage() {
   const { categories, totalDigital, totalCash } = useApp();
   const [filter, setFilter] = useState<string>("All");
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [editAllocOpen, setEditAllocOpen] = useState(false);
 
   const [selectedCategoryModal, setSelectedCategoryModal] = useState<MainCategory | null>(null);
   const [transferFromSubId, setTransferFromSubId] = useState<string | null>(null);
@@ -36,21 +35,13 @@ export default function StashesPage() {
             </span>
             <h1 className="text-xl font-bold tracking-tight text-zinc-100">Category Stashes</h1>
           </div>
-          {/* <button
-            type="button"
-            onClick={() => setHistoryOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+
+          <Link
+            href="/stashes/manage"
+            className="flex min-h-[36px] items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 text-xs font-bold transition-all active:scale-95 shadow-xs"
           >
-            <BsClockHistory className="h-3.5 w-3.5 text-emerald-400" />
-            History
-          </button> */}
-          <button
-              type="button"
-              onClick={() => setEditAllocOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-zinc-800/80 px-2.5 py-1 text-xs font-medium text-emerald-400 transition-colors hover:bg-zinc-700"
-            >
-              <BsPencil className="h-3 w-3" /> Manage
-            </button>
+            <BsPencil className="h-3 w-3" /> Manage
+          </Link>
         </header>
 
         <div className="grid grid-cols-2 gap-2">
@@ -118,8 +109,6 @@ export default function StashesPage() {
         defaultSubCategoryId={expenseFromSubId || undefined}
         onClose={() => setExpenseFromSubId(null)}
       />
-
-      <EditAllocationModal open={editAllocOpen} onClose={() => setEditAllocOpen(false)} />
     </>
   );
 }

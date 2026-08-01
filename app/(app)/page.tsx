@@ -94,36 +94,42 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Total Balance Card */}
-        <section className="rounded-2xl bg-zinc-900/60 p-5">
-          <p className="text-xs font-medium text-zinc-400">Total Balance</p>
+        {/* Total Balance Card - Premium Silver Metallic Finish */}
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-300/20 via-zinc-800/90 to-zinc-950 p-5 border border-slate-300/30 shadow-xl shadow-black/50 backdrop-blur-md">
+          {/* Metallic Ambient Light Overlays */}
+          <div className="pointer-events-none absolute -top-12 -left-12 h-32 w-32 rounded-full bg-slate-200/10 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-slate-400/10 blur-2xl" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-60" />
 
-          <span className="mt-2 flex items-center gap-3">
-            <p className="text-3xl font-extrabold tabular-nums tracking-tight text-zinc-100">
-              {!totalHidden ? `${formatCurrency(totalBalance)}` : "●●●●●●"}
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">Total Balance</p>
+
+          <span className="mt-2 flex items-center gap-3 relative z-10">
+            <p className="text-3xl font-extrabold tabular-nums tracking-tight text-white drop-shadow-sm">
+              {!totalHidden ? `${formatCurrency(totalBalance)}` : "******"}
             </p>
 
             {!totalHidden ? (
               <button type="button" onClick={() => setTotalHidden(true)}>
-                <BsEye className="h-4 w-4 text-zinc-400 hover:text-zinc-200" />
+                <BsEye className="h-4 w-4 text-slate-300 hover:text-white transition-colors" />
               </button>
             ) : (
               <button type="button" onClick={() => setTotalHidden(false)}>
-                <BsEyeSlash className="h-4 w-4 text-zinc-400 hover:text-zinc-200" />
+                <BsEyeSlash className="h-4 w-4 text-slate-300 hover:text-white transition-colors" />
               </button>
             )}
           </span>
-          <div className="mt-4 flex gap-6 border-t border-zinc-800/40 pt-3 text-xs">
+
+          <div className="mt-4 flex gap-6 border-t border-slate-400/20 pt-3 text-xs relative z-10">
             <div>
-              <p className="text-zinc-500 font-medium">Digital Wallet</p>
-              <p className="font-semibold tabular-nums text-zinc-200">
-                {!totalHidden ? `${formatCurrency(totalDigital)}` : "●●●●●"}
+              <p className="text-slate-400 font-medium">Digital Wallet</p>
+              <p className="font-semibold tabular-nums text-slate-100">
+                {!totalHidden ? `${formatCurrency(totalDigital)}` : "******"}
               </p>
             </div>
             <div>
-              <p className="text-zinc-500 font-medium">Cash on Hand</p>
-              <p className="font-semibold tabular-nums text-zinc-200">
-                {!totalHidden ? `${formatCurrency(totalCash)}` : "●●●●●"}
+              <p className="text-slate-400 font-medium">Cash on Hand</p>
+              <p className="font-semibold tabular-nums text-slate-100">
+                {!totalHidden ? `${formatCurrency(totalCash)}` : "******"}
               </p>
             </div>
           </div>
@@ -154,7 +160,7 @@ export default function HomePage() {
                       <span className="truncate block max-w-full">{cat.name}</span>
                     </div>
                     <p className="text-sm font-bold tabular-nums text-zinc-100 truncate">
-                      {!totalHidden ? `${formatCurrency(getCategoryTotalBalance(cat))}` : "●●●●●"}
+                      {!totalHidden ? `${formatCurrency(getCategoryTotalBalance(cat))}` : "******"}
                     </p>
                   </span>
                 </div>
