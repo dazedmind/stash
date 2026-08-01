@@ -124,7 +124,7 @@ export default function MePage() {
             <button
               type="button"
               onClick={logout}
-              className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-zinc-800 active:scale-95"
+              className="flex min-h-[36px] items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 text-xs font-bold transition-all active:scale-95 shadow-xs"
             >
               <BsBoxArrowRight className="h-3.5 w-3.5" />
               Sign Out

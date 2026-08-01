@@ -38,7 +38,7 @@ export default function StashesPage() {
 
           <Link
             href="/stashes/manage"
-            className="flex items-center gap-1.5 rounded-lg bg-zinc-800/80 px-2.5 py-1 text-xs font-medium text-emerald-400 transition-colors hover:bg-zinc-700"
+            className="flex min-h-[36px] items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 text-xs font-bold transition-all active:scale-95 shadow-xs"
           >
             <BsPencil className="h-3 w-3" /> Manage
           </Link>
