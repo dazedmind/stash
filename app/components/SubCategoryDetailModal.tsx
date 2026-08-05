@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsArrowLeftRight, BsDashLg, BsPencil, BsX } from "react-icons/bs";
+import { BsArrowLeftRight, BsDashLg, BsPencil, BsShieldCheck, BsX } from "react-icons/bs";
 import { formatCurrency, getCategoryTotalBalance, type MainCategory, type SubCategory } from "../lib/finance";
 import { useApp } from "../lib/store";
 import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "./CategoryIcon";
@@ -64,7 +64,14 @@ export function SubCategoryDetailModal({
 
         <header className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stashes</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stashes</h2>
+              {liveCategory.isSafe && (
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400">
+                  <BsShieldCheck className="h-3 w-3" /> Safe Category
+                </span>
+              )}
+            </div>
             <p className="mt-0.5 text-xs text-zinc-400 font-medium">
               {liveCategory.percentage > 0 ? `${liveCategory.percentage}% Allocation • ` : "Unallocated • "}
               {formatCurrency(totalCatBalance)}
@@ -108,6 +115,7 @@ export function SubCategoryDetailModal({
             liveCategory.subcategories.map((sub) => {
               const subTotal = sub.digital + sub.cash;
               const isHidden = Boolean(sub.isHidden);
+              const isSubSafe = Boolean(sub.isSafe || liveCategory.isSafe);
 
               return (
                 <div
@@ -132,8 +140,21 @@ export function SubCategoryDetailModal({
                       </button>
 
                       <div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <h3 className="font-semibold text-base text-zinc-100">{sub.name}</h3>
+
+                          {isSubSafe && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                              <BsShieldCheck className="h-3 w-3" /> Safe
+                            </span>
+                          )}
+
+                          {sub.maxCap && sub.maxCap > 0 ? (
+                            <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
+                              Cap: {formatCurrency(sub.maxCap)}
+                            </span>
+                          ) : null}
+
                           {isEditing && (
                             <button
                               type="button"
@@ -218,30 +239,47 @@ export function SubCategoryDetailModal({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        onTransferSub(sub);
-                      }}
-                      className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
-                    >
-                      <BsArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
-                      Transfer
-                    </button>
+                  {/* Actions: If Safe, only Transfer is shown! */}
+                  <div className="mt-3">
+                    {isSubSafe ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onTransferSub(sub);
+                        }}
+                        className="flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
+                      >
+                        <BsArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
+                        Transfer
+                      </button>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onTransferSub(sub);
+                          }}
+                          className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
+                        >
+                          <BsArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
+                          Transfer
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        onExpenseSub(sub);
-                      }}
-                      className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-rose-500/10 text-xs font-semibold text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95"
-                    >
-                      <BsDashLg className="h-3.5 w-3.5" />
-                      Expense
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onExpenseSub(sub);
+                          }}
+                          className="flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-rose-500/10 text-xs font-semibold text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95"
+                        >
+                          <BsDashLg className="h-3.5 w-3.5" />
+                          Subtract Expense
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

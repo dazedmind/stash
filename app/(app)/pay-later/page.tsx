@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BsClockHistory, BsCreditCard2Back, BsPlusLg } from "react-icons/bs";
+import { BsCheckLg, BsChevronDown, BsClockHistory, BsCreditCard2Back, BsPlusLg } from "react-icons/bs";
 import { AddPayLaterModal } from "../../components/AddPayLaterModal";
 import { PayLaterCardItem, PayLaterDetailModal } from "../../components/PayLaterDetailModal";
 import { TransactionHistoryModal } from "../../components/TransactionHistoryModal";
@@ -13,6 +13,7 @@ export default function PayLaterPage() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PayLaterCardItem | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [isPaidCollapsed, setIsPaidCollapsed] = useState(true); // Default collapsed for cleaner UI
 
   const fetchPayLaters = useCallback(async () => {
     try {
@@ -39,7 +40,19 @@ export default function PayLaterPage() {
     fetchPayLaters();
   }, [fetchPayLaters]);
 
-  const totalOwed = payLaters.reduce((sum, item) => {
+  function checkIsFullyPaid(item: PayLaterCardItem) {
+    const totalWithInterest = Math.round(item.totalAmount * (1 + (item.interestRate || 0) / 100));
+    const paidAmount = item.installments
+      .filter((ins) => ins.isPaid === 1)
+      .reduce((acc, ins) => acc + ins.amount, 0);
+    const remaining = Math.max(0, totalWithInterest - paidAmount);
+    return remaining === 0 && item.installments.length > 0;
+  }
+
+  const activePayLaters = payLaters.filter((item) => !checkIsFullyPaid(item));
+  const paidPayLaters = payLaters.filter((item) => checkIsFullyPaid(item));
+
+  const totalOwed = activePayLaters.reduce((sum, item) => {
     const totalWithInterest = Math.round(item.totalAmount * (1 + (item.interestRate || 0) / 100));
     const paidAmount = item.installments
       .filter((ins) => ins.isPaid === 1)
@@ -47,7 +60,7 @@ export default function PayLaterPage() {
     return sum + Math.max(0, totalWithInterest - paidAmount);
   }, 0);
 
-  const totalMonthlyRepayments = payLaters.reduce((sum, item) => {
+  const totalMonthlyRepayments = activePayLaters.reduce((sum, item) => {
     const hasUnpaid = item.installments.some((ins) => ins.isPaid === 0);
     return hasUnpaid ? sum + item.monthlyPayment : sum;
   }, 0);
@@ -92,32 +105,32 @@ export default function PayLaterPage() {
           </div>
         </div>
 
-        {/* Cards List */}
+        {/* Active Cards List */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-200">Credit Cards & Pay Later Cards</h2>
-            <span className="text-xs text-zinc-500">{payLaters.length} items</span>
+            <h2 className="text-sm font-semibold text-zinc-200">Active Commitments</h2>
+            <span className="text-xs text-zinc-500">{activePayLaters.length} items</span>
           </div>
 
           {loading ? (
             <div className="py-8 text-center text-xs text-zinc-500">Loading Pay Later items…</div>
-          ) : payLaters.length === 0 ? (
-            <div className="rounded-2xl bg-zinc-900/40 p-8 text-center">
-              <BsCreditCard2Back className="mx-auto h-8 w-8 text-zinc-600" />
-              <p className="mt-2 font-semibold text-xs text-zinc-300">No Pay Later cards listed</p>
+          ) : activePayLaters.length === 0 ? (
+            <div className="rounded-2xl bg-zinc-900/40 p-6 text-center">
+              <BsCreditCard2Back className="mx-auto h-7 w-7 text-zinc-600" />
+              <p className="mt-2 font-semibold text-xs text-zinc-300">No active Pay Later cards</p>
               <p className="mt-1 text-[11px] text-zinc-500">
                 Track your credit cards, Shopee PayLater, or installment debts.
               </p>
               <button
                 type="button"
                 onClick={() => setAddModalOpen(true)}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-zinc-950 hover:bg-emerald-400"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400"
               >
                 <BsPlusLg className="h-3.5 w-3.5" /> Add Pay Later
               </button>
             </div>
           ) : (
-            payLaters.map((item) => {
+            activePayLaters.map((item) => {
               const totalWithInterest = Math.round(item.totalAmount * (1 + (item.interestRate || 0) / 100));
               const paidCount = item.installments.filter((ins) => ins.isPaid === 1).length;
               const totalCount = item.installments.length;
@@ -126,7 +139,6 @@ export default function PayLaterPage() {
                 .reduce((acc, ins) => acc + ins.amount, 0);
 
               const remaining = Math.max(0, totalWithInterest - paidAmount);
-              const isFullyPaid = remaining === 0 && totalCount > 0;
               const progressPct = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
 
               return (
@@ -137,27 +149,14 @@ export default function PayLaterPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold ${
-                          isFullyPaid
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-zinc-950 text-emerald-400"
-                        }`}
-                      >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 font-bold text-emerald-400">
                         <BsCreditCard2Back className="h-5 w-5" />
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="truncate font-semibold text-base text-zinc-100">
-                            {item.name}
-                          </h3>
-                          {isFullyPaid && (
-                            <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                              PAID
-                            </span>
-                          )}
-                        </div>
+                        <h3 className="truncate font-semibold text-base text-zinc-100">
+                          {item.name}
+                        </h3>
                         <div className="mt-0.5 flex items-center gap-2 text-xs text-zinc-400">
                           <span>{item.frequency}</span>
                           <span>•</span>
@@ -169,11 +168,7 @@ export default function PayLaterPage() {
                     </div>
 
                     <div className="text-right">
-                      <p
-                        className={`text-base font-bold tabular-nums ${
-                          isFullyPaid ? "text-zinc-400 line-through" : "text-rose-400"
-                        }`}
-                      >
+                      <p className="text-base font-bold tabular-nums text-rose-400">
                         {formatCurrency(remaining)}
                       </p>
                       <p className="text-[11px] text-zinc-400 mt-0.5">
@@ -182,7 +177,7 @@ export default function PayLaterPage() {
                     </div>
                   </div>
 
-                  {/* Progress Bar & Checklist Quick Indicator */}
+                  {/* Progress Bar */}
                   <div className="mt-3.5 pt-3 border-t border-zinc-800/40">
                     <div className="flex items-center justify-between text-[11px] font-medium text-zinc-400">
                       <span>Payment Progress</span>
@@ -200,6 +195,73 @@ export default function PayLaterPage() {
                 </article>
               );
             })
+          )}
+
+          {/* Collapsible Paid Section (Default Collapsed) */}
+          {paidPayLaters.length > 0 && (
+            <div className="pt-3 space-y-3">
+              <button
+                type="button"
+                onClick={() => setIsPaidCollapsed(!isPaidCollapsed)}
+                className="flex w-full items-center justify-between rounded-xl bg-zinc-900/40 px-4 py-3 text-xs font-bold text-zinc-400 hover:text-zinc-200 transition-colors border border-zinc-800/30"
+              >
+                <div className="flex items-center gap-2">
+                  <span>Paid ({paidPayLaters.length})</span>
+                </div>
+                <BsChevronDown
+                  className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${
+                    isPaidCollapsed ? "" : "rotate-180"
+                  }`}
+                />
+              </button>
+
+              {!isPaidCollapsed && (
+                <div className="space-y-3 animate-fade-in">
+                  {paidPayLaters.map((item) => {
+                    const paidCount = item.installments.length;
+
+                    return (
+                      <article
+                        key={item.id}
+                        onClick={() => setSelectedItem(item)}
+                        className="group cursor-pointer rounded-2xl bg-zinc-900/30 p-4 transition-all duration-200 hover:bg-zinc-900/60 active:scale-[0.99] border border-zinc-800/20"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 font-bold">
+                              <BsCheckLg className="h-5 w-5" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="truncate font-semibold text-base text-zinc-400 line-through">
+                                  {item.name}
+                                </h3>
+                                <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                                  PAID
+                                </span>
+                              </div>
+                              <p className="text-xs text-zinc-500 mt-0.5">
+                                {paidCount} payments completed
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <p className="text-base font-bold tabular-nums text-zinc-500 line-through">
+                              ₱0
+                            </p>
+                            <p className="text-[11px] text-emerald-400 font-semibold mt-0.5">
+                              Fully Settled
+                            </p>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </section>
       </div>

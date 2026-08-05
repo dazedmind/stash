@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { categoryId, name, icon } = body;
+    const { categoryId, name, icon, isSafe, maxCap, overflowSubId } = body;
     const trimmedName = name?.trim();
 
     if (!categoryId || !trimmedName) {
@@ -37,6 +37,9 @@ export async function POST(req: Request) {
       cash: 0,
       allocated: 0,
       isHidden: 0,
+      isSafe: isSafe ? 1 : 0,
+      maxCap: Number.parseInt(String(maxCap), 10) || 0,
+      overflowSubId: overflowSubId || null,
       icon: icon || "wallet",
     });
 
@@ -55,7 +58,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { subCategoryId, name, isHidden, icon } = body;
+    const { subCategoryId, name, isHidden, icon, isSafe, maxCap, overflowSubId, digital, cash } = body;
 
     if (!subCategoryId) {
       return Response.json({ error: "Subcategory ID required" }, { status: 400 });
@@ -67,6 +70,21 @@ export async function PATCH(req: Request) {
     }
     if (typeof isHidden === "boolean") {
       updatePayload.isHidden = isHidden ? 1 : 0;
+    }
+    if (typeof isSafe === "boolean") {
+      updatePayload.isSafe = isSafe ? 1 : 0;
+    }
+    if (typeof maxCap === "number") {
+      updatePayload.maxCap = Math.max(0, maxCap);
+    }
+    if (overflowSubId !== undefined) {
+      updatePayload.overflowSubId = overflowSubId || null;
+    }
+    if (typeof digital === "number") {
+      updatePayload.digital = Math.max(0, digital);
+    }
+    if (typeof cash === "number") {
+      updatePayload.cash = Math.max(0, cash);
     }
     if (icon && typeof icon === "string") {
       updatePayload.icon = icon;

@@ -7,12 +7,14 @@ import {
   BsBoxArrowRight,
   BsCheckLg,
   BsCreditCard,
+  BsGear,
   BsLightningCharge,
   BsPerson,
   BsPieChart,
   BsWallet2,
 } from "react-icons/bs";
 import { AuthModal } from "../../components/AuthModal";
+import { StashSelectCard } from "../../components/StashSelectCard";
 import { formatCurrency } from "../../lib/finance";
 import { useApp } from "../../lib/store";
 
@@ -42,12 +44,14 @@ export default function MePage() {
     totalDigital,
     totalCash,
     categories,
-    totalIncomeReceived,
+    allSubcategories,
+    refreshData,
   } = useApp();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [transactions, setTransactions] = useState<TransactionLog[]>([]);
   const [payLaters, setPayLaters] = useState<PayLaterItem[]>([]);
+  const [overflowSubId, setOverflowSubId] = useState<string>("");
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -66,7 +70,17 @@ export default function MePage() {
       }
     }
     loadDashboardData();
-  }, []);
+
+    // Default overflow target selection
+    const firstSub = allSubcategories[0]?.id || "";
+    const savedOverflow = localStorage.getItem("global_overflow_sub_id") || firstSub;
+    setOverflowSubId(savedOverflow);
+  }, [allSubcategories]);
+
+  function handleSaveOverflowSetting(subId: string) {
+    setOverflowSubId(subId);
+    localStorage.setItem("global_overflow_sub_id", subId);
+  }
 
   // Compute Current Month Metrics
   const now = new Date();
@@ -78,7 +92,16 @@ export default function MePage() {
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
+  const currentDayTxs = currentMonthTxs.filter((tx) => {
+    const d = new Date(tx.createdAt);
+    return d.getDate() === now.getDate() && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+
   const monthlySpent = currentMonthTxs
+    .filter((tx) => tx.type === "expense")
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+    const dailySpent = currentDayTxs
     .filter((tx) => tx.type === "expense")
     .reduce((sum, tx) => sum + tx.amount, 0);
 
@@ -124,7 +147,7 @@ export default function MePage() {
             <button
               type="button"
               onClick={logout}
-              className="flex min-h-[36px] items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 text-xs font-bold transition-all active:scale-95 shadow-xs"
+              className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-zinc-800 active:scale-95"
             >
               <BsBoxArrowRight className="h-3.5 w-3.5" />
               Sign Out
@@ -171,41 +194,16 @@ export default function MePage() {
 
         {/* Minimalist KPI Dashboard Grid */}
         <section className="grid grid-cols-2 gap-2.5">
-          {/* Monthly Spent */}
+          {/* Daily Spent */}
           <div className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
             <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span className="font-medium">Monthly Spent</span>
-              <BsArrowDownRight className="h-3.5 w-3.5 text-zinc-500" />
-            </div>
-            <p className="mt-2 text-xl font-bold tabular-nums text-zinc-100">
-              {formatCurrency(monthlySpent)}
-            </p>
-            <p className="mt-1 text-[11px] text-zinc-500 font-medium">This month</p>
-          </div>
-
-          {/* Month Deposits */}
-          <div className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
-            <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span className="font-medium">Deposited</span>
+              <span className="font-medium">Daily Spent</span>
               <BsArrowUpRight className="h-3.5 w-3.5 text-zinc-500" />
             </div>
             <p className="mt-2 text-xl font-bold tabular-nums text-zinc-100">
-              {formatCurrency(monthlyIncomeDeposits)}
+              {formatCurrency(dailySpent)}
             </p>
-            <p className="mt-1 text-[11px] text-zinc-500 font-medium">This month</p>
-          </div>
-
-          {/* Net Cashflow */}
-          <div className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
-            <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span className="font-medium">Net Cashflow</span>
-              <BsLightningCharge className="h-3.5 w-3.5 text-zinc-500" />
-            </div>
-            <p className="mt-2 text-xl font-bold tabular-nums text-zinc-100">
-              {netCashflow >= 0 ? "+" : ""}
-              {formatCurrency(netCashflow)}
-            </p>
-            <p className="mt-1 text-[11px] text-zinc-500 font-medium">Net savings</p>
+            <p className="mt-1 text-[11px] text-zinc-500 font-medium">This day</p>
           </div>
 
           {/* Total Net Worth */}
@@ -225,13 +223,21 @@ export default function MePage() {
         <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BsPieChart className="h-4 w-4 text-zinc-400" />
+              <BsWallet2 className="h-4 w-4 text-zinc-400" />
               <h2 className="text-sm font-semibold text-zinc-200">Cash Distribution</h2>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-bold text-green-300 bg-green-500/10 px-2 py-0.5 rounded-full">
+                {digitalPct}% Digital
+              </span>
+              <span className="text-[11px] font-bold text-[#ffff64] bg-[#ffff64]/10 px-2 py-0.5 rounded-full">
+                {cashPct}% Cash
+              </span>
             </div>
           </div>
 
           {/* Visual Progress Bar */}
-          <div className="mt-3.5 h-2.5 flex overflow-hidden rounded-full p-0.5">
+          <div className="mt-3.5 h-2.5 flex overflow-hidden rounded-full bg-zinc-950 p-0.5">
             <div
               className="h-full bg-green-400 rounded-l-full transition-all duration-300"
               style={{ width: `${digitalPct}%` }}
@@ -262,34 +268,32 @@ export default function MePage() {
           </div>
         </section>
 
-        {/* Minimalist Top Spending Breakdown */}
-        {topSpendCategories.length > 0 && (
-          <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
-            <h2 className="text-sm font-semibold text-zinc-200 mb-3">Top Expenses This Month</h2>
-            <div className="space-y-3">
-              {topSpendCategories.map(([name, amount]) => {
-                const pct = monthlySpent > 0 ? Math.round((amount / monthlySpent) * 100) : 0;
-                return (
-                  <div key={name} className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-zinc-300">{name}</span>
-                      <span className="font-semibold tabular-nums text-zinc-100">
-                        {formatCurrency(amount)}{" "}
-                        <span className="text-[10px] text-zinc-500 font-normal">({pct}%)</span>
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-zinc-950">
-                      <div
-                        className="h-full bg-zinc-400 rounded-full transition-all duration-300"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Dashboard Settings Card: Where should overflow go? */}
+        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40 space-y-3">
+          <div className="flex items-center gap-2">
+            <BsGear className="h-4 w-4 text-emerald-400" />
+            <h2 className="text-sm font-semibold text-zinc-200">Allocation & Overflow Settings</h2>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <div>
+              <p className="text-xs font-semibold text-zinc-200">Where should overflow go?</p>
+              <p className="text-[11px] text-zinc-400">
+                Any income exceeding a sub-stash's max cap will automatically deposit to this target stash.
+              </p>
             </div>
-          </section>
-        )}
+
+            <div className="pt-1">
+              <StashSelectCard
+                dropUp
+                label="Default Overflow Target Stash"
+                selectedSubId={overflowSubId}
+                categories={categories}
+                onSelect={(subId) => handleSaveOverflowSetting(subId)}
+              />
+            </div>
+          </div>
+        </section>
 
         {/* Minimalist Pay Later Obligations Summary */}
         {activePayLaters > 0 && (

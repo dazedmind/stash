@@ -24,6 +24,9 @@ export async function GET(req: Request) {
         .where(eq(categoriesTable.userId, user.id));
     }
 
+    // Sort categories by displayOrder ascending
+    userCategories.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+
     const userSubcategories = await db
       .select()
       .from(subcategoriesTable)
@@ -35,6 +38,9 @@ export async function GET(req: Request) {
       tag: cat.tag,
       percentage: cat.percentage,
       icon: cat.icon || "wallet",
+      isSafe: Boolean(cat.isSafe),
+      overflowSubId: cat.overflowSubId || undefined,
+      displayOrder: cat.displayOrder ?? 0,
       subcategories: userSubcategories
         .filter((sub) => sub.categoryId === cat.id)
         .map((sub) => ({
@@ -45,6 +51,9 @@ export async function GET(req: Request) {
           cash: sub.cash,
           allocated: sub.allocated,
           isHidden: Boolean(sub.isHidden),
+          isSafe: Boolean(sub.isSafe),
+          maxCap: sub.maxCap || 0,
+          overflowSubId: sub.overflowSubId || undefined,
           icon: sub.icon || "wallet",
         })),
     }));

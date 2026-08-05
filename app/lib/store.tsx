@@ -77,6 +77,7 @@ interface AppContextValue {
   toggleHideSubCategory: (subCategoryId: string) => Promise<void>;
   updateSubCategoryIcon: (subCategoryId: string, icon: string) => Promise<void>;
   updateAllocations: (newPercentages: Record<string, number>) => Promise<void>;
+  reorderCategories: (newOrderedCategories: MainCategory[]) => Promise<void>;
   addSubCategory: (categoryId: string, name: string, icon?: string) => Promise<void>;
   renameSubCategoryName: (subCategoryId: string, newName: string) => Promise<void>;
   removeSubCategory: (subCategoryId: string) => Promise<void>;
@@ -168,8 +169,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addIncomeAmount = useCallback(async (amount: number, subCategoryId?: string) => {
+    const overflowId = typeof window !== "undefined" ? localStorage.getItem("global_overflow_sub_id") || undefined : undefined;
+
     if (!subCategoryId) {
-      setCategories((prev) => addIncomeToCategories(prev, amount));
+      setCategories((prev) => addIncomeToCategories(prev, amount, overflowId));
     } else {
       setCategories((prev) =>
         prev.map((cat) => ({
@@ -194,7 +197,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await fetch("/api/finance/income", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount, subCategoryId }),
+          body: JSON.stringify({ amount, subCategoryId, globalOverflowSubId: overflowId }),
         });
         await fetchFinanceData();
       } catch (err) {
@@ -328,6 +331,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [user, fetchFinanceData]
   );
 
+  const reorderCategories = useCallback(
+    async (newOrderedCategories: MainCategory[]) => {
+      setCategories(newOrderedCategories);
+      const categoryIds = newOrderedCategories.map((c) => c.id);
+
+      if (user) {
+        try {
+          await fetch("/api/finance/categories/reorder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ categoryIds }),
+          });
+        } catch (err) {
+          console.error("Reorder persistence error:", err);
+        }
+      }
+    },
+    [user]
+  );
+
   const addSubCategory = useCallback(
     async (categoryId: string, name: string, icon: string = "wallet") => {
       setCategories((prev) => addSubCategoryToCategory(prev, categoryId, name, icon));
@@ -435,6 +458,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleHideSubCategory,
       updateSubCategoryIcon,
       updateAllocations,
+      reorderCategories,
       addSubCategory,
       renameSubCategoryName,
       removeSubCategory,
@@ -457,6 +481,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toggleHideSubCategory,
     updateSubCategoryIcon,
     updateAllocations,
+    reorderCategories,
     addSubCategory,
     renameSubCategoryName,
     removeSubCategory,

@@ -8,6 +8,9 @@ export interface SubCategory {
   cash: number;
   allocated: number;
   isHidden?: boolean;
+  isSafe?: boolean; // Safe tagging: no Subtract Expense button, only Transfer
+  maxCap?: number; // 0 = uncapped
+  overflowSubId?: string; // Target sub-stash ID to route overflow
   icon?: string;
 }
 
@@ -17,6 +20,9 @@ export interface MainCategory {
   tag: CategoryTag;
   percentage: number;
   icon?: string;
+  isSafe?: boolean; // Safe tagging on category level
+  overflowSubId?: string; // Category-level overflow target sub-stash ID
+  displayOrder?: number;
   subcategories: SubCategory[];
 }
 
@@ -34,6 +40,8 @@ export function buildInitialMainCategories(): MainCategory[] {
       tag: "Savings",
       percentage: 30,
       icon: "piggy",
+      isSafe: true,
+      displayOrder: 0,
       subcategories: [
         {
           id: "savings-needs",
@@ -43,6 +51,8 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          isSafe: true,
+          maxCap: 0,
           icon: "piggy",
         },
         {
@@ -53,6 +63,8 @@ export function buildInitialMainCategories(): MainCategory[] {
           cash: 0,
           allocated: 0,
           isHidden: false,
+          isSafe: false,
+          maxCap: 0,
           icon: "bag",
         },
       ],
@@ -63,6 +75,7 @@ export function buildInitialMainCategories(): MainCategory[] {
       tag: "Liabilities",
       percentage: 30,
       icon: "lightning",
+      displayOrder: 1,
       subcategories: [
         {
           id: "liabilities-rent",
@@ -92,6 +105,7 @@ export function buildInitialMainCategories(): MainCategory[] {
       tag: "Expenses",
       percentage: 40,
       icon: "receipt",
+      displayOrder: 2,
       subcategories: [
         {
           id: "expenses-food",
@@ -140,33 +154,104 @@ export function calculateAllocations(income: number, categories: MainCategory[])
   return result;
 }
 
-export function addIncomeToCategories(categories: MainCategory[], income: number): MainCategory[] {
+export function addIncomeToCategories(
+  categories: MainCategory[],
+  income: number,
+  globalOverflowSubId?: string
+): MainCategory[] {
   const safeIncome = Number.isFinite(income) && income > 0 ? income : 0;
   if (safeIncome <= 0) return categories;
 
-  return categories.map((cat) => {
+  let totalOverflowPool = 0;
+
+  // Step 1: Calculate raw split per subcategory and apply maxCap caps
+  const categoriesWithInitialAllocations = categories.map((cat) => {
     const catAllocation = Math.round(safeIncome * (cat.percentage / 100));
     const subs = cat.subcategories;
 
     if (subs.length === 0) {
+      return {
+        cat,
+        subAllocations: [
+          { subId: `${cat.id}-general`, amount: catAllocation },
+        ],
+      };
+    }
+
+    const basePerSub = Math.floor(catAllocation / subs.length);
+    const baseRemainder = catAllocation - basePerSub * subs.length;
+
+    const subAllocations = subs.map((sub, idx) => {
+      const rawShare = basePerSub + (idx === 0 ? baseRemainder : 0);
+      let allowed = rawShare;
+
+      if (sub.maxCap && sub.maxCap > 0) {
+        allowed = Math.min(rawShare, sub.maxCap);
+        const overflow = rawShare - allowed;
+        if (overflow > 0) {
+          totalOverflowPool += overflow;
+        }
+      }
+
+      return { subId: sub.id, amount: allowed };
+    });
+
+    return { cat, subAllocations };
+  });
+
+  // Step 2: Route totalOverflowPool to globalOverflowSubId or uncapped sub-stash
+  if (totalOverflowPool > 0) {
+    let targetSubId = globalOverflowSubId;
+
+    let foundTarget = false;
+    if (targetSubId) {
+      foundTarget = categoriesWithInitialAllocations.some((c) =>
+        c.subAllocations.some((s) => s.subId === targetSubId)
+      );
+    }
+
+    if (!foundTarget) {
+      const uncappedSub = categories
+        .flatMap((c) => c.subcategories)
+        .find((s) => !s.maxCap || s.maxCap <= 0);
+
+      if (uncappedSub) {
+        targetSubId = uncappedSub.id;
+        foundTarget = true;
+      }
+    }
+
+    if (targetSubId) {
+      for (const item of categoriesWithInitialAllocations) {
+        const targetAlloc = item.subAllocations.find((s) => s.subId === targetSubId);
+        if (targetAlloc) {
+          targetAlloc.amount += totalOverflowPool;
+          break;
+        }
+      }
+    }
+  }
+
+  // Step 3: Produce updated MainCategory list with net balances
+  return categoriesWithInitialAllocations.map(({ cat, subAllocations }) => {
+    if (cat.subcategories.length === 0) {
+      const alloc = subAllocations[0];
       const newSub: SubCategory = {
-        id: `${cat.id}-general`,
+        id: alloc.subId,
         categoryId: cat.id,
         name: "General",
-        digital: catAllocation,
+        digital: alloc.amount,
         cash: 0,
-        allocated: catAllocation,
+        allocated: alloc.amount,
         isHidden: false,
         icon: "wallet",
       };
       return { ...cat, subcategories: [newSub] };
     }
 
-    const perSubAllocation = Math.floor(catAllocation / subs.length);
-    const remainder = catAllocation - perSubAllocation * subs.length;
-
-    const newSubs = subs.map((sub, idx) => {
-      const addition = perSubAllocation + (idx === 0 ? remainder : 0);
+    const updatedSubs = cat.subcategories.map((sub) => {
+      const alloc = subAllocations.find((s) => s.subId === sub.id);
+      const addition = alloc ? alloc.amount : 0;
       return {
         ...sub,
         digital: sub.digital + addition,
@@ -174,7 +259,7 @@ export function addIncomeToCategories(categories: MainCategory[], income: number
       };
     });
 
-    return { ...cat, subcategories: newSubs };
+    return { ...cat, subcategories: updatedSubs };
   });
 }
 
@@ -349,6 +434,8 @@ export function addSubCategoryToCategory(
       cash: 0,
       allocated: 0,
       isHidden: false,
+      isSafe: false,
+      maxCap: 0,
       icon,
     };
 
