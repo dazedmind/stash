@@ -154,6 +154,62 @@ export function calculateAllocations(income: number, categories: MainCategory[])
   return result;
 }
 
+export function computeSubStashAllocations(catAllocation: number, subs: SubCategory[]) {
+  if (subs.length === 0) {
+    return { subAllocations: {} as Record<string, number>, categoryOverflow: 0 };
+  }
+
+  const basePerSub = Math.floor(catAllocation / subs.length);
+  const baseRemainder = catAllocation - basePerSub * subs.length;
+
+  let excessPool = 0;
+  const currentAlloc: Record<string, number> = {};
+
+  // Pass 1: Equal base split & cap check
+  subs.forEach((sub, idx) => {
+    const rawShare = basePerSub + (idx === 0 ? baseRemainder : 0);
+    if (sub.maxCap && sub.maxCap > 0) {
+      if (rawShare > sub.maxCap) {
+        currentAlloc[sub.id] = sub.maxCap;
+        excessPool += rawShare - sub.maxCap;
+      } else {
+        currentAlloc[sub.id] = rawShare;
+      }
+    } else {
+      currentAlloc[sub.id] = rawShare;
+    }
+  });
+
+  // Pass 2: Distribute excessPool to other sub-stashes in the same category that still have room under maxCap or are uncapped
+  if (excessPool > 0) {
+    const eligibleSubs = subs.filter((sub) => {
+      if (!sub.maxCap || sub.maxCap <= 0) return true;
+      return currentAlloc[sub.id] < sub.maxCap;
+    });
+
+    if (eligibleSubs.length > 0) {
+      for (const sub of eligibleSubs) {
+        if (excessPool <= 0) break;
+
+        if (!sub.maxCap || sub.maxCap <= 0) {
+          currentAlloc[sub.id] += excessPool;
+          excessPool = 0;
+        } else {
+          const room = sub.maxCap - currentAlloc[sub.id];
+          const fill = Math.min(room, excessPool);
+          currentAlloc[sub.id] += fill;
+          excessPool -= fill;
+        }
+      }
+    }
+  }
+
+  return {
+    subAllocations: currentAlloc,
+    categoryOverflow: excessPool,
+  };
+}
+
 export function addIncomeToCategories(
   categories: MainCategory[],
   income: number,
@@ -164,7 +220,7 @@ export function addIncomeToCategories(
 
   let totalOverflowPool = 0;
 
-  // Step 1: Calculate raw split per subcategory and apply maxCap caps
+  // Step 1: Calculate sub-stash allocations per category and collect true category overflow
   const categoriesWithInitialAllocations = categories.map((cat) => {
     const catAllocation = Math.round(safeIncome * (cat.percentage / 100));
     const subs = cat.subcategories;
@@ -178,25 +234,15 @@ export function addIncomeToCategories(
       };
     }
 
-    const basePerSub = Math.floor(catAllocation / subs.length);
-    const baseRemainder = catAllocation - basePerSub * subs.length;
+    const { subAllocations, categoryOverflow } = computeSubStashAllocations(catAllocation, subs);
+    totalOverflowPool += categoryOverflow;
 
-    const subAllocations = subs.map((sub, idx) => {
-      const rawShare = basePerSub + (idx === 0 ? baseRemainder : 0);
-      let allowed = rawShare;
+    const formattedSubAllocations = subs.map((sub) => ({
+      subId: sub.id,
+      amount: subAllocations[sub.id] || 0,
+    }));
 
-      if (sub.maxCap && sub.maxCap > 0) {
-        allowed = Math.min(rawShare, sub.maxCap);
-        const overflow = rawShare - allowed;
-        if (overflow > 0) {
-          totalOverflowPool += overflow;
-        }
-      }
-
-      return { subId: sub.id, amount: allowed };
-    });
-
-    return { cat, subAllocations };
+    return { cat, subAllocations: formattedSubAllocations };
   });
 
   // Step 2: Route totalOverflowPool to globalOverflowSubId or uncapped sub-stash

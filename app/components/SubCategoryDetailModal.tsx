@@ -66,11 +66,6 @@ export function SubCategoryDetailModal({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stashes</h2>
-              {liveCategory.isSafe && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400">
-                  <BsShieldCheck className="h-3 w-3" /> Safe Category
-                </span>
-              )}
             </div>
             <p className="mt-0.5 text-xs text-zinc-400 font-medium">
               {liveCategory.percentage > 0 ? `${liveCategory.percentage}% Allocation • ` : "Unallocated • "}
