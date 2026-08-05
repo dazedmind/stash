@@ -12,6 +12,7 @@ interface StashSelectCardProps {
   onSelect: (subId: string) => void;
   filterCategoryId?: string;
   excludeSubId?: string;
+  dropUp?: boolean;
 }
 
 export function StashSelectCard({
@@ -21,6 +22,7 @@ export function StashSelectCard({
   onSelect,
   filterCategoryId,
   excludeSubId,
+  dropUp = false,
 }: StashSelectCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,9 +95,13 @@ export function StashSelectCard({
         />
       </button>
 
-      {/* Shadcn Inline Dropdown Popover Menu (No nested sheet/modal backdrop!) */}
+      {/* Dropdown Popover Menu (Supports dropUp = true to show upwards!) */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-[80] mt-1.5 max-h-64 overflow-y-auto rounded-2xl bg-zinc-900/95 p-2 shadow-2xl backdrop-blur-md animate-fade-in scrollbar-none border border-zinc-800/60">
+        <div
+          className={`absolute left-0 right-0 z-[80] max-h-64 overflow-y-auto rounded-2xl bg-zinc-900/95 p-2 shadow-2xl backdrop-blur-md animate-fade-in scrollbar-none border border-zinc-800/60 ${
+            dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          }`}
+        >
           <div className="space-y-3">
             {targetCategories.map((cat) => {
               const subList = cat.subcategories.filter((s) => s.id !== excludeSubId);

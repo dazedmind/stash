@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, tag, percentage, icon } = body;
+    const { name, tag, percentage, icon, isSafe, overflowSubId } = body;
     const trimmedName = name?.trim();
 
     if (!trimmedName) {
@@ -26,6 +26,8 @@ export async function POST(req: Request) {
       tag: tag || trimmedName,
       percentage: Number.parseInt(String(percentage), 10) || 0,
       icon: icon || "wallet",
+      isSafe: isSafe ? 1 : 0,
+      overflowSubId: overflowSubId || null,
     });
 
     return Response.json({ success: true, id: newCatId });
@@ -43,7 +45,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { categoryId, name, tag, icon } = body;
+    const { categoryId, name, tag, icon, isSafe, overflowSubId } = body;
 
     if (!categoryId) {
       return Response.json({ error: "Category ID is required" }, { status: 400 });
@@ -53,6 +55,8 @@ export async function PATCH(req: Request) {
     if (name && typeof name === "string") updatePayload.name = name.trim();
     if (tag && typeof tag === "string") updatePayload.tag = tag;
     if (icon && typeof icon === "string") updatePayload.icon = icon;
+    if (typeof isSafe === "boolean") updatePayload.isSafe = isSafe ? 1 : 0;
+    if (overflowSubId !== undefined) updatePayload.overflowSubId = overflowSubId || null;
 
     if (Object.keys(updatePayload).length === 0) {
       return Response.json({ error: "No fields to update" }, { status: 400 });

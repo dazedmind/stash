@@ -27,6 +27,9 @@ export const categories = pgTable("categories", {
   tag: text("tag").notNull(),
   percentage: integer("percentage").notNull(),
   icon: text("icon").notNull().default("wallet"),
+  isSafe: integer("is_safe").notNull().default(0),
+  overflowSubId: text("overflow_sub_id"),
+  displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -43,6 +46,9 @@ export const subcategories = pgTable("subcategories", {
   cash: integer("cash").notNull().default(0),
   allocated: integer("allocated").notNull().default(0),
   isHidden: integer("is_hidden").notNull().default(0), // 0 = visible in total balance, 1 = hidden from total balance
+  isSafe: integer("is_safe").notNull().default(0), // 0 = normal, 1 = safe (no expense allowed, only transfer)
+  maxCap: integer("max_cap").notNull().default(0), // 0 = no cap
+  overflowSubId: text("overflow_sub_id"),
   icon: text("icon").notNull().default("wallet"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

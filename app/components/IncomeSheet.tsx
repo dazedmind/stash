@@ -17,6 +17,7 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
   const [selectedSubId, setSelectedSubId] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [visible, setVisible] = useState(false);
+  const [overflowSubId, setOverflowSubId] = useState<string>("");
 
   useEffect(() => {
     if (open) {
@@ -25,6 +26,8 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
       if (allSubcategories.length > 0) {
         setSelectedSubId(allSubcategories[0].id);
       }
+      const savedOverflow = localStorage.getItem("global_overflow_sub_id") || allSubcategories[0]?.id || "";
+      setOverflowSubId(savedOverflow);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -44,6 +47,43 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
       addIncomeAmount(parsedAmount, selectedSubId);
     }
     onClose();
+  }
+
+  // Calculate overflow breakdown per category
+  let totalOverflowPool = 0;
+  const categoryOverflows: Record<string, number> = {};
+
+  categories.forEach((cat) => {
+    const rawShare = Math.round(parsedAmount * (cat.percentage / 100));
+    const subs = cat.subcategories;
+
+    if (subs.length > 0 && rawShare > 0) {
+      const perSubRaw = Math.floor(rawShare / subs.length);
+      const remainder = rawShare - perSubRaw * subs.length;
+      let catOverflow = 0;
+
+      subs.forEach((sub, idx) => {
+        const subRaw = perSubRaw + (idx === 0 ? remainder : 0);
+        if (sub.maxCap && sub.maxCap > 0 && subRaw > sub.maxCap) {
+          catOverflow += subRaw - sub.maxCap;
+        }
+      });
+
+      if (catOverflow > 0) {
+        categoryOverflows[cat.id] = catOverflow;
+        totalOverflowPool += catOverflow;
+      }
+    }
+  });
+
+  // Find target overflow category ID containing overflowSubId
+  let targetOverflowCatId = "";
+  if (overflowSubId) {
+    const foundCat = categories.find((c) => c.subcategories.some((s) => s.id === overflowSubId));
+    if (foundCat) targetOverflowCatId = foundCat.id;
+  }
+  if (!targetOverflowCatId && categories.length > 0) {
+    targetOverflowCatId = categories[categories.length - 1].id;
   }
 
   return (
@@ -114,10 +154,11 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
           </div>
         </label>
 
-        {/* Manual Target Stash Selector using StashSelectCard */}
+        {/* Manual Target Stash Selector with dropUp=true */}
         {allocationMode === "manual" && (
           <div className="mt-4">
             <StashSelectCard
+              dropUp
               label="Target Sub-stash"
               selectedSubId={selectedSubId}
               categories={categories}
@@ -132,16 +173,42 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
             <span className="text-xs font-medium text-zinc-400">Allocation Breakdown</span>
             <div className="mt-2 space-y-1.5 text-xs">
               {categories.map((cat) => {
-                const allocatedShare = Math.round(parsedAmount * (cat.percentage / 100));
+                const rawShare = Math.round(parsedAmount * (cat.percentage / 100));
+                const catOverflowSubtracted = categoryOverflows[cat.id] || 0;
+                const isTargetOverflow = cat.id === targetOverflowCatId && totalOverflowPool > 0;
+                const catOverflowAdded = isTargetOverflow ? totalOverflowPool : 0;
+                const netShare = rawShare - catOverflowSubtracted + catOverflowAdded;
 
                 return (
-                  <div key={cat.id} className="flex justify-between items-center text-zinc-300">
-                    <span>
-                      {cat.name} ({cat.percentage}%)
-                    </span>
-                    <span className="tabular-nums font-mono text-zinc-200">
-                      {formatCurrency(allocatedShare)}
-                    </span>
+                  <div key={cat.id} className="space-y-1">
+                    <div className="flex justify-between items-center text-zinc-300 font-semibold">
+                      <span>
+                        {cat.name} ({cat.percentage}%)
+                      </span>
+                      <span className="tabular-nums font-mono text-zinc-100">
+                        {formatCurrency(netShare)}
+                      </span>
+                    </div>
+
+                    {/* Subtracted Overflow line in Red text */}
+                    {catOverflowSubtracted > 0 && (
+                      <div className="flex justify-between items-center pl-3 text-rose-400 font-medium text-[11px]">
+                        <span>Overflow</span>
+                        <span className="tabular-nums font-mono">
+                          - {formatCurrency(catOverflowSubtracted)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Added Overflow line in Green text for Target Overflow Stash */}
+                    {catOverflowAdded > 0 && (
+                      <div className="flex justify-between items-center pl-3 text-emerald-400 font-medium text-[11px]">
+                        <span>Overflow</span>
+                        <span className="tabular-nums font-mono">
+                          + {formatCurrency(catOverflowAdded)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

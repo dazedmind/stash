@@ -1,26 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BsArrowLeft,
   BsCheckLg,
   BsExclamationTriangle,
+  BsGripVertical,
   BsPencil,
   BsPlusLg,
+  BsShieldCheck,
   BsTrash,
 } from "react-icons/bs";
 import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "../../../components/CategoryIcon";
 import { ConfirmModal } from "../../../components/ConfirmModal";
-import { formatCurrency } from "../../../lib/finance";
+import { Switch } from "../../../components/ui/switch";
+import { formatCurrency, type MainCategory } from "../../../lib/finance";
 import { useApp } from "../../../lib/store";
 
 export default function ManageStashesPage() {
   const router = useRouter();
   const {
     categories,
+    allSubcategories,
     updateAllocations,
+    reorderCategories,
     updateSubCategoryIcon,
     addSubCategory,
     renameSubCategoryName,
@@ -31,10 +36,26 @@ export default function ManageStashesPage() {
   const [percentages, setPercentages] = useState<Record<string, number>>({});
   const [newSubName, setNewSubName] = useState<Record<string, string>>({});
   const [newSubIcon, setNewSubIcon] = useState<Record<string, string>>({});
+
+  // Category Name Editing
+  const [editingCatNameId, setEditingCatNameId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState<string>("");
+
+  // Sub-stash Name Editing
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const [editingSubName, setEditingSubName] = useState<string>("");
+
+  // Icon Editing
   const [editingSubIconId, setEditingSubIconId] = useState<string | null>(null);
   const [editingCatIconId, setEditingCatIconId] = useState<string | null>(null);
+
+  // Single Capping input state per sub-stash
+  const [maxCaps, setMaxCaps] = useState<Record<string, string>>({});
+
+  // Drag and Drop reordering state
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // New Category Creation state
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -54,18 +75,25 @@ export default function ManageStashesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const initial: Record<string, number> = {};
+    const initialPct: Record<string, number> = {};
     for (const cat of categories) {
-      initial[cat.id] = cat.percentage;
+      initialPct[cat.id] = cat.percentage;
     }
-    setPercentages(initial);
-  }, [categories]);
+    setPercentages(initialPct);
+
+    // Initialize sub-stash cap values
+    const capMap: Record<string, string> = {};
+    for (const sub of allSubcategories) {
+      capMap[sub.id] = sub.maxCap ? String(sub.maxCap) : "0";
+    }
+    setMaxCaps(capMap);
+  }, [categories, allSubcategories]);
 
   const totalPercentage = Object.values(percentages).reduce((a, b) => a + b, 0);
-  const isValidPercentage = totalPercentage === 100;
+  const isExact100 = totalPercentage === 100;
 
   async function handleSavePercentages() {
-    if (!isValidPercentage || isSaving) return;
+    if (!isExact100 || isSaving) return;
     setIsSaving(true);
     try {
       await updateAllocations(percentages);
@@ -77,20 +105,99 @@ export default function ManageStashesPage() {
     }
   }
 
-  async function handleUpdateCategoryIcon(catId: string, icon: string) {
+  // Drag and Drop Handlers for Main Stashes
+  function handleDragStart(e: React.DragEvent, index: number) {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverIdx !== index) {
+      setDragOverIdx(index);
+    }
+  }
+
+  function handleDrop(e: React.DragEvent, targetIndex: number) {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === targetIndex) return;
+
+    const newCats = [...categories];
+    const [removed] = newCats.splice(draggedIdx, 1);
+    newCats.splice(targetIndex, 0, removed);
+
+    reorderCategories(newCats);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  }
+
+  function handleTouchStart(index: number) {
+    longPressTimerRef.current = setTimeout(() => {
+      setDraggedIdx(index);
+    }, 300);
+  }
+
+  function handleTouchMove() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function handleTouchEnd() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  async function handleUpdateCategory(catId: string, payload: Record<string, any>) {
     try {
       const res = await fetch("/api/finance/categories", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoryId: catId, icon }),
+        body: JSON.stringify({ categoryId: catId, ...payload }),
       });
       if (res.ok) {
-        setEditingCatIconId(null);
         await refreshData();
       }
     } catch (err) {
-      console.error("Update category icon error:", err);
+      console.error("Update category error:", err);
     }
+  }
+
+  async function handleUpdateSubCategory(subId: string, payload: Record<string, any>) {
+    try {
+      const res = await fetch("/api/finance/subcategories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subCategoryId: subId, ...payload }),
+      });
+      if (res.ok) {
+        await refreshData();
+      }
+    } catch (err) {
+      console.error("Update subcategory error:", err);
+    }
+  }
+
+  async function handleSaveCatName(catId: string) {
+    if (editingCatName.trim()) {
+      await handleUpdateCategory(catId, { name: editingCatName.trim() });
+    }
+    setEditingCatNameId(null);
+  }
+
+  async function handleSaveCap(subId: string) {
+    const cap = Number.parseInt(maxCaps[subId] || "0", 10) || 0;
+    await handleUpdateSubCategory(subId, { maxCap: cap });
   }
 
   async function handleCreateCategory() {
@@ -149,12 +256,7 @@ export default function ManageStashesPage() {
     setNewSubName((prev) => ({ ...prev, [catId]: "" }));
   }
 
-  function handleStartRename(subId: string, currentName: string) {
-    setEditingSubId(subId);
-    setEditingSubName(currentName);
-  }
-
-  function handleSaveRename(subId: string) {
+  function handleSaveSubRename(subId: string) {
     if (editingSubName.trim()) {
       renameSubCategoryName(subId, editingSubName.trim());
     }
@@ -178,72 +280,49 @@ export default function ManageStashesPage() {
                 MANAGE STASHES
               </span>
               <h1 className="text-xl font-bold tracking-tight text-zinc-100">
-                Categories & Split Rules
+                Categories & Sub-stashes
               </h1>
             </div>
           </div>
 
           <button
             type="button"
-            disabled={!isValidPercentage || isSaving}
+            disabled={!isExact100 || isSaving}
             onClick={handleSavePercentages}
             className="flex items-center gap-1.5 rounded-full bg-emerald-500 p-3 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-95 disabled:opacity-30"
+            title="Save Allocation Rules"
           >
             <BsCheckLg className="h-5 w-5" />
           </button>
         </header>
 
-        {/* Allocation Split Banner */}
-        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            <div className="flex items-center gap-2">
-              {isValidPercentage ? (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
-                  <BsCheckLg className="h-4 w-4" />
-                </div>
-              ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/10 text-amber-400">
+        {/* Allocation Split Warning Banner: Shown ONLY when totalPercentage !== 100 */}
+        {!isExact100 && (
+          <section className="rounded-2xl bg-amber-500/10 p-4 border border-amber-500/30 animate-fade-in">
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
                   <BsExclamationTriangle className="h-4 w-4" />
                 </div>
-              )}
-              <div>
-                <p className="text-zinc-100 font-bold">
-                  {isValidPercentage ? "100% Allocation Balance" : "Allocation Split Incomplete"}
-                </p>
-                <p className="text-[11px] text-zinc-400 font-normal mt-0.5">
-                  {isValidPercentage
-                    ? "Income will be automatically split according to these rules"
-                    : "Total allocation percentage must equal exactly 100%"}
-                </p>
+                <div>
+                  <p className="text-amber-300 font-bold">Allocation Split Warning</p>
+                </div>
               </div>
+              <span className="font-mono text-base font-extrabold text-amber-400">
+                {totalPercentage}%
+              </span>
             </div>
-            <span
-              className={`font-mono text-base font-extrabold ${
-                isValidPercentage ? "text-emerald-400" : "text-amber-400"
-              }`}
-            >
-              {totalPercentage}%
-            </span>
-          </div>
-
-          <div className="mt-3.5 h-2 overflow-hidden rounded-full bg-zinc-950">
-            <div
-              className={`h-full transition-all duration-300 rounded-full ${
-                isValidPercentage ? "bg-emerald-500" : "bg-amber-500"
-              }`}
-              style={{ width: `${Math.min(100, totalPercentage)}%` }}
-            />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Create New Main Category Section */}
         {isAddingCategory ? (
-          <section className="rounded-2xl bg-zinc-900/80 p-5 border border-emerald-500/30">
+          <section className="rounded-2xl bg-zinc-900/80 p-5 border border-emerald-500/30 space-y-3">
             <h3 className="text-sm font-bold text-emerald-400">Add New Main Category</h3>
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <input
                 type="text"
-                placeholder="Category Name (e.g. Investments)"
+                placeholder="Category Name"
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 className="col-span-2 min-h-[42px] rounded-xl bg-zinc-950 px-3.5 text-xs text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
@@ -258,8 +337,8 @@ export default function ManageStashesPage() {
             </div>
 
             {/* Icon Chooser */}
-            <div className="mt-3.5">
-              <span className="text-[11px] font-medium text-zinc-400">Choose Main Icon</span>
+            <div>
+              <span className="text-[11px] font-medium text-zinc-400">Choose Icon</span>
               <div className="mt-2 flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
                 {CATEGORY_ICON_OPTIONS.map((opt) => {
                   const IconComp = opt.icon;
@@ -283,7 +362,7 @@ export default function ManageStashesPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end pt-2">
               <button
                 type="button"
                 onClick={() => setIsAddingCategory(false)}
@@ -311,40 +390,88 @@ export default function ManageStashesPage() {
           </button>
         )}
 
-        {/* Main Categories & Sub-stashes List */}
+        {/* Main Categories & Sub-stashes List (Supports Long-Press & Drag reordering) */}
         <div className="space-y-4">
-          {categories.map((cat) => {
+          {categories.map((cat, idx) => {
             const currentPct = percentages[cat.id] ?? cat.percentage;
+            const isDragging = draggedIdx === idx;
+            const isDragOver = dragOverIdx === idx;
 
             return (
-              <section key={cat.id} className="rounded-2xl bg-zinc-900/60 p-5 border border-zinc-800/40 space-y-4">
+              <section
+                key={cat.id}
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, idx)}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                onTouchStart={() => handleTouchStart(idx)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                className={`rounded-2xl bg-zinc-900/60 p-5 border transition-all duration-200 space-y-4 ${
+                  isDragging
+                    ? "opacity-40 scale-[0.98] border-emerald-500"
+                    : isDragOver
+                    ? "border-emerald-500/80 bg-emerald-500/5 ring-2 ring-emerald-500/30"
+                    : "border-zinc-800/40"
+                }`}
+              >
                 {/* Main Stash Category Header */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
+                    {/* Drag Handle Grip Icon for Long-Press / Mouse Drag */}
+                    <div
+                      className="cursor-grab active:cursor-grabbing text-zinc-500 hover:text-emerald-400 p-1 rounded transition-colors touch-none"
+                      title="Hold / Drag to reorder stash"
+                    >
+                      <BsGripVertical className="h-5 w-5" />
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => setEditingCatIconId(editingCatIconId === cat.id ? null : cat.id)}
                       className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-emerald-400 hover:bg-zinc-700 transition-colors shrink-0"
-                      title="Change Main Category Icon"
+                      title="Change Icon"
                     >
                       <CategoryIcon iconName={cat.icon} className="h-5 w-5" />
                     </button>
 
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="font-bold text-base text-zinc-100">{cat.name}</h2>
-                        <button
-                          type="button"
-                          onClick={() => setEditingCatIconId(editingCatIconId === cat.id ? null : cat.id)}
-                          className="text-zinc-500 hover:text-emerald-400 transition-colors"
-                          title="Change Icon"
-                        >
-                          <BsPencil className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <p className="text-xs text-zinc-400 font-medium mt-0.5">
-                        {cat.subcategories.length} sub-stashes
-                      </p>
+                      {editingCatNameId === cat.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={editingCatName}
+                            onChange={(e) => setEditingCatName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveCatName(cat.id);
+                            }}
+                            className="rounded-lg bg-zinc-950 px-2.5 py-1 text-sm font-bold text-white outline-none border border-emerald-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveCatName(cat.id)}
+                            className="rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-bold text-zinc-950"
+                          >
+                            Save
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-bold text-base text-zinc-100">{cat.name}</h2>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCatNameId(cat.id);
+                              setEditingCatName(cat.name);
+                            }}
+                            className="text-zinc-500 hover:text-emerald-400 transition-colors"
+                            title="Edit Category Name"
+                          >
+                            <BsPencil className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -377,6 +504,21 @@ export default function ManageStashesPage() {
                   </div>
                 </div>
 
+                {/* Safe Category Toggle with Switch Component */}
+                <div className="flex items-center justify-between rounded-xl p-2 text-xs ">
+                  <div className="flex items-center gap-2">
+                    <BsShieldCheck className="h-4 w-4 text-emerald-400" />
+                    <div>
+                      <span className="font-semibold text-zinc-200">Tag Category as Safe</span>
+                    </div>
+                  </div>
+                  <Switch
+                    id={`safe-switch-${cat.id}`}
+                    checked={Boolean(cat.isSafe)}
+                    onCheckedChange={(checked) => handleUpdateCategory(cat.id, { isSafe: checked })}
+                  />
+                </div>
+
                 {/* Inline Icon Picker for Main Stash */}
                 {editingCatIconId === cat.id && (
                   <div className="rounded-xl bg-zinc-950 p-3 border border-zinc-800/60">
@@ -391,7 +533,10 @@ export default function ManageStashesPage() {
                           <button
                             key={opt.id}
                             type="button"
-                            onClick={() => handleUpdateCategoryIcon(cat.id, opt.id)}
+                            onClick={() => {
+                              handleUpdateCategory(cat.id, { icon: opt.id });
+                              setEditingCatIconId(null);
+                            }}
                             className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
                               isSelected
                                 ? "bg-emerald-500 text-zinc-950 font-bold scale-105"
@@ -407,122 +552,135 @@ export default function ManageStashesPage() {
                   </div>
                 )}
 
-                {/* Percentage Range Slider */}
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={currentPct}
-                  onChange={(e) => {
-                    const val = Number.parseInt(e.target.value, 10);
-                    setPercentages((prev) => ({ ...prev, [cat.id]: val }));
-                  }}
-                  className="w-full accent-emerald-500"
-                />
-
                 {/* Sub-stashes Section */}
-                <div className="pt-3 border-t border-zinc-800/40 space-y-2">
+                <div className="pt-3 border-t border-zinc-800/40 space-y-3">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
                     Sub-stashes
                   </span>
 
-                  <div className="space-y-2">
-                    {cat.subcategories.map((sub) => (
-                      <div key={sub.id} className="rounded-xl bg-zinc-950/80 p-3 text-xs border border-zinc-800/20">
-                        <div className="flex items-center justify-between">
-                          {editingSubId === sub.id ? (
-                            <div className="flex flex-1 items-center gap-2">
-                              <input
-                                type="text"
-                                value={editingSubName}
-                                onChange={(e) => setEditingSubName(e.target.value)}
-                                className="flex-1 rounded-lg bg-zinc-900 px-2.5 py-1 text-xs text-white outline-none"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleSaveRename(sub.id)}
-                                className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-zinc-950"
-                              >
-                                Save
-                              </button>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center gap-2.5">
+                  <div className="space-y-2.5">
+                    {cat.subcategories.map((sub) => {
+                      return (
+                        <div
+                          key={sub.id}
+                          className="rounded-xl bg-zinc-950/80 p-3.5 text-xs border border-zinc-800/30 space-y-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            {editingSubId === sub.id ? (
+                              <div className="flex flex-1 items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingSubName}
+                                  onChange={(e) => setEditingSubName(e.target.value)}
+                                  className="flex-1 rounded-lg bg-zinc-900 px-2.5 py-1 text-xs text-white outline-none"
+                                />
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
-                                  }
-                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 hover:bg-zinc-800 transition-colors"
-                                  title="Change Icon"
+                                  onClick={() => handleSaveSubRename(sub.id)}
+                                  className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-zinc-950"
                                 >
-                                  <CategoryIcon iconName={sub.icon} className="h-3.5 w-3.5" />
-                                </button>
-                                <span className="font-semibold text-zinc-200 text-sm">{sub.name}</span>
-                              </div>
-
-                              <div className="flex items-center gap-3 text-zinc-400">
-                                <span className="tabular-nums font-mono text-zinc-300 font-bold">
-                                  {formatCurrency(sub.digital + sub.cash)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
-                                  }
-                                  className="text-zinc-400 hover:text-emerald-400 transition-colors"
-                                  title="Change Icon"
-                                >
-                                  <BsPencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeSubCategory(sub.id)}
-                                  className="text-zinc-400 hover:text-rose-400 transition-colors"
-                                  title="Delete Sub-stash"
-                                >
-                                  <BsTrash className="h-3.5 w-3.5" />
+                                  Save
                                 </button>
                               </div>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Inline Sub-stash Icon Picker */}
-                        {editingSubIconId === sub.id && (
-                          <div className="mt-2.5 rounded-lg bg-zinc-900 p-2.5 border border-zinc-800/60">
-                            <span className="text-[10px] font-medium text-zinc-400">
-                              Choose Icon for "{sub.name}"
-                            </span>
-                            <div className="mt-1.5 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
-                              {CATEGORY_ICON_OPTIONS.map((opt) => {
-                                const IconComp = opt.icon;
-                                const isSelected = (sub.icon || "wallet") === opt.id;
-                                return (
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2.5 flex-wrap">
                                   <button
-                                    key={opt.id}
                                     type="button"
-                                    onClick={() => {
-                                      updateSubCategoryIcon(sub.id, opt.id);
-                                      setEditingSubIconId(null);
-                                    }}
-                                    className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${
-                                      isSelected
-                                        ? "bg-emerald-500 text-zinc-950 font-bold"
-                                        : "bg-zinc-950 text-zinc-400 hover:text-zinc-100"
-                                    }`}
-                                    title={opt.label}
+                                    onClick={() =>
+                                      setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
+                                    }
+                                    className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 hover:bg-zinc-800 transition-colors"
+                                    title="Change Icon"
                                   >
-                                    <IconComp className="h-3.5 w-3.5" />
+                                    <CategoryIcon iconName={sub.icon} className="h-4 w-4" />
                                   </button>
-                                );
-                              })}
-                            </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold text-zinc-100 text-sm">{sub.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingSubId(sub.id);
+                                        setEditingSubName(sub.name);
+                                      }}
+                                      className="text-zinc-500 hover:text-emerald-400 transition-colors"
+                                      title="Edit Sub-stash Name"
+                                    >
+                                      <BsPencil className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2.5 text-zinc-400">
+                                  <span className="tabular-nums font-mono text-zinc-200 font-bold text-sm">
+                                    {formatCurrency(sub.digital + sub.cash)}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removeSubCategory(sub.id)}
+                                    className="text-zinc-400 hover:text-rose-400 transition-colors"
+                                    title="Delete Sub-stash"
+                                  >
+                                    <BsTrash className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {/* Inline Sub-stash Icon Picker */}
+                          {editingSubIconId === sub.id && (
+                            <div className="rounded-lg bg-zinc-900 p-2.5 border border-zinc-800/60">
+                              <span className="text-[10px] font-medium text-zinc-400">
+                                Choose Icon for "{sub.name}"
+                              </span>
+                              <div className="mt-1.5 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                                {CATEGORY_ICON_OPTIONS.map((opt) => {
+                                  const IconComp = opt.icon;
+                                  const isSelected = (sub.icon || "wallet") === opt.id;
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => {
+                                        updateSubCategoryIcon(sub.id, opt.id);
+                                        setEditingSubIconId(null);
+                                      }}
+                                      className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${
+                                        isSelected
+                                          ? "bg-emerald-500 text-zinc-950 font-bold"
+                                          : "bg-zinc-950 text-zinc-400 hover:text-zinc-100"
+                                      }`}
+                                      title={opt.label}
+                                    >
+                                      <IconComp className="h-3.5 w-3.5" />
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Single Capping Field */}
+                          <div className="flex items-center gap-2 rounded-lg justify-between">
+                            <span className="text-[11px] font-medium text-zinc-400">Max Cap (₱)</span>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={maxCaps[sub.id] ?? sub.maxCap ?? 0}
+                              onChange={(e) =>
+                                setMaxCaps((prev) => ({ ...prev, [sub.id]: e.target.value }))
+                              }
+                              onBlur={() => handleSaveCap(sub.id)}
+                              className="w-24 rounded-md bg-zinc-950 px-2.5 py-1 text-right font-mono text-xs font-bold text-emerald-400 outline-none border border-zinc-800"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Add Sub-stash Inline Form */}
@@ -551,21 +709,6 @@ export default function ManageStashesPage() {
               </section>
             );
           })}
-        </div>
-
-        {/* Bottom Floating Save Action */}
-        <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent pointer-events-none">
-          <div className="max-w-2xl mx-auto pointer-events-auto">
-            <button
-              type="button"
-              disabled={!isValidPercentage || isSaving}
-              onClick={handleSavePercentages}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-zinc-950 shadow-xl transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-30"
-            >
-              <BsCheckLg className="h-4 w-4" />
-              {isSaving ? "Saving Allocation Rules…" : "Save Allocation Rules"}
-            </button>
-          </div>
         </div>
       </div>
 
