@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { categories as categoriesTable, subcategories, transactions, users } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { generateId, getAuthenticatedUser } from "@/app/lib/auth";
+import { computeSubStashAllocations } from "@/app/lib/finance";
 
 export async function POST(req: Request) {
   try {
@@ -13,6 +14,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const amount = Number.parseInt(body.amount, 10);
     const subCategoryId = body.subCategoryId; // optional specific sub-stash
+    const globalOverflowSubId = body.globalOverflowSubId;
 
     if (!Number.isFinite(amount) || amount <= 0) {
       return Response.json({ error: "Invalid amount" }, { status: 400 });
@@ -73,11 +75,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "No categories found" }, { status: 400 });
     }
 
-    const breakdown: Record<string, number> = {};
+    let totalOverflowPool = 0;
+    const categorySubAllocations: { catId: string; subId: string; addition: number }[] = [];
 
+    // Step 1: Compute sub-stash allocations per category and collect true category overflow
     for (const cat of userCategories) {
       const catAllocation = Math.round(amount * (cat.percentage / 100));
-      breakdown[cat.name] = catAllocation;
 
       let catSubs = await db
         .select()
@@ -98,20 +101,53 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const perSubAllocation = Math.floor(catAllocation / catSubs.length);
-      const remainder = catAllocation - perSubAllocation * catSubs.length;
+      const { subAllocations, categoryOverflow } = computeSubStashAllocations(
+        catAllocation,
+        catSubs.map((s) => ({
+          ...s,
+          isHidden: Boolean(s.isHidden),
+          isSafe: Boolean(s.isSafe),
+          maxCap: s.maxCap || 0,
+        }))
+      );
 
-      for (let i = 0; i < catSubs.length; i++) {
-        const sub = catSubs[i];
-        const addition = perSubAllocation + (i === 0 ? remainder : 0);
+      totalOverflowPool += categoryOverflow;
 
+      catSubs.forEach((sub) => {
+        const addition = subAllocations[sub.id] || 0;
+        categorySubAllocations.push({ catId: cat.id, subId: sub.id, addition });
+      });
+    }
+
+    // Step 2: Route totalOverflowPool to globalOverflowSubId or uncapped sub-stash
+    if (totalOverflowPool > 0) {
+      let targetSubId = globalOverflowSubId;
+
+      let found = categorySubAllocations.find((item) => item.subId === targetSubId);
+      if (!found && categorySubAllocations.length > 0) {
+        targetSubId = categorySubAllocations[categorySubAllocations.length - 1].subId;
+        found = categorySubAllocations.find((item) => item.subId === targetSubId);
+      }
+
+      if (found) {
+        found.addition += totalOverflowPool;
+      }
+    }
+
+    // Step 3: Persist all updated subcategory balances
+    const breakdown: Record<string, number> = {};
+
+    for (const allocItem of categorySubAllocations) {
+      if (allocItem.addition > 0) {
         await db
           .update(subcategories)
           .set({
-            digital: sql`${subcategories.digital} + ${addition}`,
-            allocated: sql`${subcategories.allocated} + ${addition}`,
+            digital: sql`${subcategories.digital} + ${allocItem.addition}`,
+            allocated: sql`${subcategories.allocated} + ${allocItem.addition}`,
           })
-          .where(eq(subcategories.id, sub.id));
+          .where(eq(subcategories.id, allocItem.subId));
+
+        breakdown[allocItem.subId] = allocItem.addition;
       }
     }
 

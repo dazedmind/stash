@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BsPlusLg } from "react-icons/bs";
-import { formatCurrency } from "../lib/finance";
+import { computeSubStashAllocations, formatCurrency } from "../lib/finance";
 import { useApp } from "../lib/store";
 import { StashSelectCard } from "./StashSelectCard";
 
@@ -49,7 +49,7 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
     onClose();
   }
 
-  // Calculate overflow breakdown per category
+  // Calculate overflow breakdown per category using computeSubStashAllocations
   let totalOverflowPool = 0;
   const categoryOverflows: Record<string, number> = {};
 
@@ -58,20 +58,10 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
     const subs = cat.subcategories;
 
     if (subs.length > 0 && rawShare > 0) {
-      const perSubRaw = Math.floor(rawShare / subs.length);
-      const remainder = rawShare - perSubRaw * subs.length;
-      let catOverflow = 0;
-
-      subs.forEach((sub, idx) => {
-        const subRaw = perSubRaw + (idx === 0 ? remainder : 0);
-        if (sub.maxCap && sub.maxCap > 0 && subRaw > sub.maxCap) {
-          catOverflow += subRaw - sub.maxCap;
-        }
-      });
-
-      if (catOverflow > 0) {
-        categoryOverflows[cat.id] = catOverflow;
-        totalOverflowPool += catOverflow;
+      const { categoryOverflow } = computeSubStashAllocations(rawShare, subs);
+      if (categoryOverflow > 0) {
+        categoryOverflows[cat.id] = categoryOverflow;
+        totalOverflowPool += categoryOverflow;
       }
     }
   });
