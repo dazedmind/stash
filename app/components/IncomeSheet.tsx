@@ -126,20 +126,21 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
         </div>
 
         {/* Amount Input */}
-        <label className="mt-4 block">
+        <label className="mt-4 block text-center">
           <span className="text-xs text-zinc-400 font-medium">Income Amount</span>
-          <div className="relative mt-1.5">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-zinc-500">
+          <div className="relative mt-2 transition-transform duration-300 focus-within:scale-[1.02]">
+            <span className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-3xl font-bold text-zinc-500">
               ₱
             </span>
             <input
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={amount.replace(/^0+/, "")}
+              value={amount ? Number(amount).toLocaleString("en-US") : ""}
               placeholder="0"
               onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-              className="min-h-[52px] w-full rounded-xl bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+              style={{ fontSize: "2rem", fontWeight: 800 }}
+              className="w-full rounded-2xl bg-zinc-900 py-2 px-14 text-center tabular-nums text-emerald-400 outline-none transition-colors focus:bg-zinc-800/80 focus:ring-2 focus:ring-emerald-500/30"
             />
           </div>
         </label>
@@ -213,8 +214,8 @@ export function IncomeSheet({ open, onClose }: IncomeSheetProps) {
           onClick={handleSubmit}
           className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-30"
         >
-          <BsPlusLg className="h-4 w-4" />
-          {allocationMode === "auto" ? "Deposit & Auto-Allocate" : "Deposit to Selected Stash"}
+          {/* <BsPlusLg className="h-4 w-4" /> */}
+          Deposit
         </button>
       </div>
     </div>

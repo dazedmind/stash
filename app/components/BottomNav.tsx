@@ -10,8 +10,13 @@ import {
   BsPerson,
   BsPersonFill,
   BsPlusLg,
-  BsWallet2,
+  BsWallet,
+  BsWalletFill,
 } from "react-icons/bs";
+import {
+  HiOutlineWallet,
+  HiWallet
+} from "react-icons/hi2";  
 
 interface BottomNavProps {
   onAddClick?: () => void;
@@ -45,7 +50,7 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
             pathname === "/stashes" ? "text-emerald-400 font-semibold" : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
-          <BsWallet2 className="h-5 w-5" />
+          {pathname === "/stashes" ? <HiWallet className="h-5 w-5" /> : <HiOutlineWallet className="h-5 w-5" />}
           Stashes
         </Link>
 
