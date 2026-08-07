@@ -147,7 +147,7 @@ export default function MePage() {
             <button
               type="button"
               onClick={logout}
-              className="flex items-center gap-1.5 rounded-xl bg-zinc-900 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 transition-all hover:bg-zinc-800 active:scale-95"
+              className="flex min-h-[36px] items-center gap-1.5 rounded-xl bg-zinc-900 px-3 text-xs font-semibold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white active:scale-95"
             >
               <BsBoxArrowRight className="h-3.5 w-3.5" />
               Sign Out
@@ -167,7 +167,7 @@ export default function MePage() {
         {/* Minimalist User Account Profile Banner */}
         <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-800 font-bold text-zinc-200 text-lg">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-400 font-bold text-zinc-950 text-lg">
               {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
             </div>
             <div className="min-w-0 flex-1">
@@ -219,55 +219,6 @@ export default function MePage() {
           </div>
         </section>
 
-        {/* Color-Differentiated Cash Liquidity Distribution Card */}
-        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BsWallet2 className="h-4 w-4 text-zinc-400" />
-              <h2 className="text-sm font-semibold text-zinc-200">Cash Distribution</h2>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-green-300 bg-green-500/10 px-2 py-0.5 rounded-full">
-                {digitalPct}% Digital
-              </span>
-              <span className="text-[11px] font-bold text-[#ffff64] bg-[#ffff64]/10 px-2 py-0.5 rounded-full">
-                {cashPct}% Cash
-              </span>
-            </div>
-          </div>
-
-          {/* Visual Progress Bar */}
-          <div className="mt-3.5 h-2.5 flex overflow-hidden rounded-full bg-zinc-950 p-0.5">
-            <div
-              className="h-full bg-green-400 rounded-l-full transition-all duration-300"
-              style={{ width: `${digitalPct}%` }}
-              title={`Digital: ${formatCurrency(totalDigital)}`}
-            />
-            <div
-              className="h-full bg-[#ffff64] rounded-r-full transition-all duration-300"
-              style={{ width: `${cashPct}%` }}
-              title={`Cash: ${formatCurrency(totalCash)}`}
-            />
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-800/40 pt-3 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-green-400 shrink-0" />
-              <div>
-                <p className="text-zinc-400 font-medium">Digital Wallet</p>
-                <p className="font-bold tabular-nums text-green-300">{formatCurrency(totalDigital)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#ffff64] shrink-0" />
-              <div>
-                <p className="text-zinc-400 font-medium">Cash on Hand</p>
-                <p className="font-bold tabular-nums text-[#ffff64]">{formatCurrency(totalCash)}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Dashboard Settings Card: Where should overflow go? */}
         <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40 space-y-3">
           <div className="flex items-center gap-2">
@@ -276,13 +227,6 @@ export default function MePage() {
           </div>
 
           <div className="space-y-2 pt-1">
-            <div>
-              <p className="text-xs font-semibold text-zinc-200">Where should overflow go?</p>
-              <p className="text-[11px] text-zinc-400">
-                Any income exceeding a sub-stash's max cap will automatically deposit to this target stash.
-              </p>
-            </div>
-
             <div className="pt-1">
               <StashSelectCard
                 dropUp

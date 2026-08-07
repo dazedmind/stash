@@ -59,7 +59,7 @@ export default function StashesPage() {
           </div>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
           {filterOptions.map((item) => (
             <button
               key={item}
@@ -74,7 +74,7 @@ export default function StashesPage() {
               {item}
             </button>
           ))}
-        </div>
+        </div> */}
 
         <div className="space-y-3">
           {filtered.map((cat) => (

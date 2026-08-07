@@ -83,14 +83,13 @@ export default function HomePage() {
               History
             </button>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => setIncomeOpen(true)}
-              className="flex min-h-[36px] items-center gap-1.5 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-95 shadow-xs"
+              className="flex items-center gap-1.5 rounded-full bg-emerald-500 p-3 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-95 shadow-xs"
             >
-              <BsPlusLg className="h-3.5 w-3.5" />
-              Income
-            </button>
+              <BsPlusLg className="h-4 w-4" strokeWidth={1.5} />
+            </button> */}
           </div>
         </header>
 

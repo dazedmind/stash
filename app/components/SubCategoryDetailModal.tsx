@@ -65,7 +65,7 @@ export function SubCategoryDetailModal({
         <header className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stashes</h2>
+              <h2 className="text-xl font-bold tracking-tight text-zinc-100">{liveCategory.name} Stash</h2>
             </div>
             <p className="mt-0.5 text-xs text-zinc-400 font-medium">
               {liveCategory.percentage > 0 ? `${liveCategory.percentage}% Allocation • ` : "Unallocated • "}
@@ -126,7 +126,7 @@ export function SubCategoryDetailModal({
                         onClick={() =>
                           isEditing && setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
                         }
-                        className={`flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 transition-colors ${
+                        className={`flex h-9 w-9 items-center justify-center rounded-full bg-emerald-400 text-zinc-950 transition-colors ${
                           isEditing ? "hover:bg-zinc-800 cursor-pointer" : "cursor-default"
                         }`}
                         title={isEditing ? "Change Sub-stash Icon" : undefined}
@@ -236,18 +236,21 @@ export function SubCategoryDetailModal({
 
                   {/* Actions: If Safe, only Transfer is shown! */}
                   <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onTransferSub(sub);
+                      }}
+                      className="flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
+                    >
+                      <BsArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
+                      Transfer
+                    </button>
+                  </div>
+                  
+                  {/* <div className="mt-3">
                     {isSubSafe ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onTransferSub(sub);
-                        }}
-                        className="flex min-h-[38px] w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-xs font-semibold text-zinc-200 transition-all hover:bg-zinc-800 active:scale-95"
-                      >
-                        <BsArrowLeftRight className="h-3.5 w-3.5 text-emerald-400" />
-                        Transfer
-                      </button>
                     ) : (
                       <div className="grid grid-cols-2 gap-2">
                         <button
@@ -275,7 +278,7 @@ export function SubCategoryDetailModal({
                         </button>
                       </div>
                     )}
-                  </div>
+                  </div> */}
                 </div>
               );
             })

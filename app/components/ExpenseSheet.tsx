@@ -29,7 +29,11 @@ export function ExpenseSheet({
       setAmount("");
       setNote("");
       setSource("digital");
-      const defaultId = defaultSubCategoryId || (allSubcategories.length > 0 ? allSubcategories[0].id : "");
+      const nonSafeSubcategories = allSubcategories.filter((sub) => {
+        const cat = categories.find((c) => c.id === sub.categoryId);
+        return cat ? !cat.isSafe : true;
+      });
+      const defaultId = defaultSubCategoryId || (nonSafeSubcategories.length > 0 ? nonSafeSubcategories[0].id : "");
       setSubCategoryId(defaultId);
       requestAnimationFrame(() => setVisible(true));
     } else {
@@ -86,7 +90,7 @@ export function ExpenseSheet({
           <StashSelectCard
             label="Subtract From Stash"
             selectedSubId={subCategoryId}
-            categories={categories}
+            categories={categories.filter((cat) => !cat.isSafe)}
             onSelect={(newSub) => setSubCategoryId(newSub)}
           />
 
@@ -126,10 +130,10 @@ export function ExpenseSheet({
           </div>
 
           {/* Expense Amount Input */}
-          <label className="block">
+          <label className="block text-center">
             <span className="text-xs text-zinc-400 font-medium">Expense Amount</span>
-            <div className="relative mt-1.5">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg text-zinc-500">
+            <div className="relative mt-2 transition-transform duration-300 focus-within:scale-[1.02]">
+              <span className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 text-3xl font-bold text-zinc-500">
                 ₱
               </span>
               <input
@@ -137,13 +141,14 @@ export function ExpenseSheet({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder="0"
-                value={amount}
+                value={amount ? Number(amount).toLocaleString("en-US") : ""}
                 onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
-                className="min-h-[52px] w-full rounded-xl bg-zinc-900 pl-10 pr-4 text-2xl font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+                style={{ fontSize: "2rem", fontWeight: 800 }}
+                className="w-full rounded-2xl bg-zinc-900 py-2 px-14 text-center tabular-nums text-rose-400 outline-none transition-colors focus:bg-zinc-800/80 focus:ring-2 focus:ring-rose-500/30"
               />
             </div>
             {parsedAmount > availableBalance && (
-              <p className="mt-1 text-xs font-medium text-rose-400">
+              <p className="mt-2 text-xs font-medium text-rose-400">
                 Insufficient stash balance ({formatCurrency(availableBalance)})
               </p>
             )}
@@ -156,7 +161,7 @@ export function ExpenseSheet({
               <BsJournalText className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input
                 type="text"
-                placeholder="e.g. Groceries at SM, Dinner with friends"
+                placeholder="e.g. Groceries, Lunch"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 className="min-h-[44px] w-full rounded-xl bg-zinc-900 pl-10 pr-3 text-xs text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
@@ -172,7 +177,6 @@ export function ExpenseSheet({
           onClick={handleSubmit}
           className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-rose-500 text-sm font-bold text-zinc-950 transition-all hover:bg-rose-400 active:scale-[0.99] disabled:opacity-30"
         >
-          <BsDashLg className="h-4 w-4" />
           Subtract Expense
         </button>
       </div>
