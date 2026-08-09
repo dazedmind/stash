@@ -23,6 +23,17 @@ import {
   BsReceipt,
   BsShieldCheck,
   BsWallet2,
+  BsPlayCircle,
+  BsMusicNoteBeamed,
+  BsDroplet,
+  BsRouter,
+  BsFire,
+  BsGlobe,
+  BsNewspaper,
+  BsBook,
+  BsSpotify,
+  BsYoutube,
+  BsApple,
 } from "react-icons/bs";
 
 export const CATEGORY_ICON_OPTIONS = [
@@ -48,53 +59,53 @@ export const CATEGORY_ICON_OPTIONS = [
   { id: "coffee", label: "Coffee", icon: BsCupHot },
   { id: "cart", label: "Groceries", icon: BsCart3 },
   { id: "rent", label: "Rent & Keys", icon: BsKey },
+  { id: "play", label: "Video/Stream", icon: BsPlayCircle },
+  { id: "music", label: "Music", icon: BsMusicNoteBeamed },
+  { id: "water", label: "Water Bill", icon: BsDroplet },
+  { id: "internet", label: "Internet", icon: BsRouter },
+  { id: "gas", label: "Gas Bill", icon: BsFire },
+  { id: "globe", label: "Web/Global", icon: BsGlobe },
+  { id: "news", label: "News", icon: BsNewspaper },
+  { id: "book", label: "Books", icon: BsBook },
+  { id: "spotify", label: "Spotify", icon: BsSpotify },
+  { id: "youtube", label: "YouTube", icon: BsYoutube },
+  { id: "apple", label: "Apple", icon: BsApple },
 ];
 
 export function CategoryIcon({ iconName, className = "h-4 w-4" }: { iconName?: string; className?: string }) {
   switch (iconName) {
-    case "piggy":
-      return <BsPiggyBank className={className} />;
-    case "lightning":
-      return <BsLightningCharge className={className} />;
-    case "receipt":
-      return <BsReceipt className={className} />;
-    case "house":
-      return <BsHouseDoor className={className} />;
-    case "card":
-      return <BsCreditCard className={className} />;
-    case "bag":
-      return <BsBagCheck className={className} />;
-    case "shield":
-      return <BsShieldCheck className={className} />;
-    case "car":
-      return <BsCarFront className={className} />;
-    case "gift":
-      return <BsGift className={className} />;
-    case "heart":
-      return <BsHeart className={className} />;
-    case "laptop":
-      return <BsLaptop className={className} />;
-    case "phone":
-      return <BsPhone className={className} />;
-    case "plane":
-      return <BsAirplane className={className} />;
-    case "game":
-      return <BsController className={className} />;
-    case "work":
-      return <BsBriefcase className={className} />;
-    case "school":
-      return <BsMortarboard className={className} />;
-    case "movie":
-      return <BsFilm className={className} />;
-    case "invest":
-      return <BsGraphUpArrow className={className} />;
-    case "coffee":
-      return <BsCupHot className={className} />;
-    case "cart":
-      return <BsCart3 className={className} />;
-    case "rent":
-      return <BsKey className={className} />;
-    default:
-      return <BsWallet2 className={className} />;
+    case "piggy": return <BsPiggyBank className={className} />;
+    case "lightning": return <BsLightningCharge className={className} />;
+    case "receipt": return <BsReceipt className={className} />;
+    case "house": return <BsHouseDoor className={className} />;
+    case "card": return <BsCreditCard className={className} />;
+    case "bag": return <BsBagCheck className={className} />;
+    case "shield": return <BsShieldCheck className={className} />;
+    case "car": return <BsCarFront className={className} />;
+    case "gift": return <BsGift className={className} />;
+    case "heart": return <BsHeart className={className} />;
+    case "laptop": return <BsLaptop className={className} />;
+    case "phone": return <BsPhone className={className} />;
+    case "plane": return <BsAirplane className={className} />;
+    case "game": return <BsController className={className} />;
+    case "work": return <BsBriefcase className={className} />;
+    case "school": return <BsMortarboard className={className} />;
+    case "movie": return <BsFilm className={className} />;
+    case "invest": return <BsGraphUpArrow className={className} />;
+    case "coffee": return <BsCupHot className={className} />;
+    case "cart": return <BsCart3 className={className} />;
+    case "rent": return <BsKey className={className} />;
+    case "play": return <BsPlayCircle className={className} />;
+    case "music": return <BsMusicNoteBeamed className={className} />;
+    case "water": return <BsDroplet className={className} />;
+    case "internet": return <BsRouter className={className} />;
+    case "gas": return <BsFire className={className} />;
+    case "globe": return <BsGlobe className={className} />;
+    case "news": return <BsNewspaper className={className} />;
+    case "book": return <BsBook className={className} />;
+    case "spotify": return <BsSpotify className={className} />;
+    case "youtube": return <BsYoutube className={className} />;
+    case "apple": return <BsApple className={className} />;
+    default: return <BsWallet2 className={className} />;
   }
 }

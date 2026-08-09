@@ -14,6 +14,15 @@ export interface SubCategory {
   icon?: string;
 }
 
+export interface Subscription {
+  id: string;
+  name: string;
+  amount: number;
+  billingCycle: "monthly" | "yearly" | string;
+  billingDate: string; // ISO date string
+  icon: string;
+}
+
 export interface MainCategory {
   id: string;
   name: string;
@@ -21,6 +30,7 @@ export interface MainCategory {
   percentage: number;
   icon?: string;
   isSafe?: boolean; // Safe tagging on category level
+  isHidden?: boolean; // Hidden from total balance
   overflowSubId?: string; // Category-level overflow target sub-stash ID
   displayOrder?: number;
   subcategories: SubCategory[];
@@ -41,6 +51,7 @@ export function buildInitialMainCategories(): MainCategory[] {
       percentage: 30,
       icon: "piggy",
       isSafe: true,
+      isHidden: false,
       displayOrder: 0,
       subcategories: [
         {
@@ -75,6 +86,7 @@ export function buildInitialMainCategories(): MainCategory[] {
       tag: "Liabilities",
       percentage: 30,
       icon: "lightning",
+      isHidden: false,
       displayOrder: 1,
       subcategories: [
         {
@@ -105,6 +117,7 @@ export function buildInitialMainCategories(): MainCategory[] {
       tag: "Expenses",
       percentage: 40,
       icon: "receipt",
+      isHidden: false,
       displayOrder: 2,
       subcategories: [
         {
@@ -448,6 +461,36 @@ export function updateSubCategoryIconInCategories(
   }));
 }
 
+export function updateCategorySettingsInCategories(
+  categories: MainCategory[],
+  categoryId: string,
+  settings: Partial<MainCategory>
+): MainCategory[] {
+  return categories.map((cat) =>
+    cat.id === categoryId ? { ...cat, ...settings } : cat
+  );
+}
+
+export function deleteCategoryFromCategories(
+  categories: MainCategory[],
+  categoryId: string
+): MainCategory[] {
+  return categories.filter((cat) => cat.id !== categoryId);
+}
+
+export function updateSubCategorySettingsInCategories(
+  categories: MainCategory[],
+  subCategoryId: string,
+  settings: Partial<SubCategory>
+): MainCategory[] {
+  return categories.map((cat) => ({
+    ...cat,
+    subcategories: cat.subcategories.map((sub) =>
+      sub.id === subCategoryId ? { ...sub, ...settings } : sub
+    ),
+  }));
+}
+
 export function updateCategoryPercentages(
   categories: MainCategory[],
   newPercentages: Record<string, number>,
@@ -546,29 +589,35 @@ export function getCategoryTotalAllocated(cat: MainCategory): number {
 
 // Excludes hidden stashes from Total Balance calculation
 export function getTotalBalance(categories: MainCategory[]): number {
-  return categories.reduce((acc, cat) => acc + getCategoryVisibleTotalBalance(cat), 0);
+  return categories
+    .filter((cat) => !cat.isHidden)
+    .reduce((acc, cat) => acc + getCategoryVisibleTotalBalance(cat), 0);
 }
 
 export function getTotalDigital(categories: MainCategory[]): number {
-  return categories.reduce(
-    (acc, cat) =>
-      acc +
-      cat.subcategories
-        .filter((sub) => !sub.isHidden)
-        .reduce((sum, sub) => sum + sub.digital, 0),
-    0
-  );
+  return categories
+    .filter((cat) => !cat.isHidden)
+    .reduce(
+      (acc, cat) =>
+        acc +
+        cat.subcategories
+          .filter((sub) => !sub.isHidden)
+          .reduce((sum, sub) => sum + sub.digital, 0),
+      0
+    );
 }
 
 export function getTotalCash(categories: MainCategory[]): number {
-  return categories.reduce(
-    (acc, cat) =>
-      acc +
-      cat.subcategories
-        .filter((sub) => !sub.isHidden)
-        .reduce((sum, sub) => sum + sub.cash, 0),
-    0
-  );
+  return categories
+    .filter((cat) => !cat.isHidden)
+    .reduce(
+      (acc, cat) =>
+        acc +
+        cat.subcategories
+          .filter((sub) => !sub.isHidden)
+          .reduce((sum, sub) => sum + sub.cash, 0),
+      0
+    );
 }
 
 export function getAllocationTotals(categories: MainCategory[]) {

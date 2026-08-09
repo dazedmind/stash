@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsArrowLeftRight, BsDashLg, BsPlusLg, BsX } from "react-icons/bs";
+import { BsArrowLeftRight, BsDashLg, BsPlusLg, BsX, BsArrowReturnRight } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 
 interface TransactionLog {
@@ -119,160 +119,186 @@ export function TransactionHistoryModal({ open, onClose }: TransactionHistoryMod
               No {typeFilter !== "all" ? typeFilter : ""} transactions recorded yet.
             </div>
           ) : (
-            filteredTransactions.map((tx) => {
-              const isIncome = tx.type === "income";
-              const isExpense = tx.type === "expense";
-              const isInternalTransfer = tx.type === "transfer_internal";
-              const isSubTransfer = tx.type === "transfer_sub";
+            (() => {
+              let lastDateHeader = "";
 
-              const dateStr = new Date(tx.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              return filteredTransactions.map((tx) => {
+                const isIncome = tx.type === "income";
+                const isExpense = tx.type === "expense";
+                const isInternalTransfer = tx.type === "transfer_internal";
+                const isSubTransfer = tx.type === "transfer_sub";
 
-              const isToCashInternal =
-                tx.source === "digital_to_cash" || tx.description?.toLowerCase().includes("to cash");
-              const isDigitalSource = tx.source === "digital" || tx.source === "digital_to_cash";
+                const txDate = new Date(tx.createdAt);
+                
+                const timeStr = txDate.toLocaleTimeString("en-US", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
 
-              const renderTitle = () => {
-                if (isIncome) return "Income Deposit";
-                if (isExpense) return `Expense: ${tx.subCategoryName || "Stash"}`;
-                if (isSubTransfer && tx.description && tx.description.includes(" to ")) {
-                  const parts = tx.description.split(" to ");
-                  return (
-                    <span>
-                      <strong className="font-bold text-zinc-100">{parts[0]}</strong>{" "}
-                      <span className="font-normal text-zinc-400 text-xs">to</span>{" "}
-                      <strong className="font-bold text-zinc-100">{parts[1]}</strong>
-                    </span>
-                  );
+                const dateHeaderStr = txDate.toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                });
+
+                let showHeader = false;
+                if (dateHeaderStr !== lastDateHeader) {
+                  showHeader = true;
+                  lastDateHeader = dateHeaderStr;
                 }
-                return tx.description || "Stash Transfer";
-              };
 
-              return (
-                <div
-                  key={tx.id}
-                  className="rounded-2xl bg-zinc-900/40 p-4 transition-all"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <div
-                        className={`flex shrink-0 h-9 w-9 items-center justify-center rounded-full font-bold mt-0.5 ${
-                          isIncome
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : isExpense
-                              ? "bg-rose-500/10 text-rose-400"
-                              : "bg-zinc-800 text-zinc-300"
-                        }`}
-                      >
-                        {isIncome ? (
-                          <BsPlusLg className="h-4 w-4" />
-                        ) : isExpense ? (
-                          <BsDashLg className="h-4 w-4" />
-                        ) : (
-                          <BsArrowLeftRight className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p className="font-semibold text-sm text-zinc-100 leading-snug">
-                          {renderTitle()}
-                        </p>
+                const isToCashInternal =
+                  tx.source === "digital_to_cash" || tx.description?.toLowerCase().includes("to cash");
+                const isDigitalSource = tx.source === "digital" || tx.source === "digital_to_cash";
 
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* Direction Pill Badges */}
-                          {isInternalTransfer && (
-                            <div className="inline-flex items-center gap-1">
-                              {isToCashInternal ? (
-                                <>
-                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
-                                    Digital
-                                  </span>
-                                  <span className="text-xs text-zinc-400 font-bold">→</span>
-                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
-                                    Cash
-                                  </span>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
-                                    Cash
-                                  </span>
-                                  <span className="text-xs text-zinc-400 font-bold">→</span>
-                                  <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
-                                    Digital
-                                  </span>
-                                </>
+                const renderTitle = () => {
+                  if (isIncome) return "Income Deposit";
+                  if (isExpense) return `Expense: ${tx.subCategoryName || "Stash"}`;
+                  if (isSubTransfer && tx.description && tx.description.includes(" to ")) {
+                    const parts = tx.description.split(" to ");
+                    return (
+                      <span>
+                        <strong className="font-bold text-zinc-100">{parts[0]}</strong>{" "}
+                        <span className="font-normal text-zinc-400 text-xs">to</span>{" "}
+                        <strong className="font-bold text-zinc-100">{parts[1]}</strong>
+                      </span>
+                    );
+                  }
+                  return tx.description || "Stash Transfer";
+                };
+
+                return (
+                  <div key={tx.id}>
+                    {showHeader && (
+                      <h3 className="sticky top-0 z-10 bg-zinc-950/95 py-2 text-sm font-bold text-zinc-300 backdrop-blur-md mb-2">
+                        {dateHeaderStr}
+                      </h3>
+                    )}
+                    <div className="rounded-2xl bg-zinc-900/40 p-4 transition-all mb-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div
+                            className={`flex shrink-0 h-9 w-9 items-center justify-center rounded-full font-bold mt-0.5 ${
+                              isIncome
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : isExpense
+                                  ? "bg-rose-500/10 text-rose-400"
+                                  : "bg-zinc-800 text-zinc-300"
+                            }`}
+                          >
+                            {isIncome ? (
+                              <BsPlusLg className="h-4 w-4" />
+                            ) : isExpense ? (
+                              <BsDashLg className="h-4 w-4" />
+                            ) : (
+                              <BsArrowLeftRight className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <p className="font-semibold text-sm text-zinc-100 leading-snug">
+                              {renderTitle()}
+                            </p>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Direction Pill Badges */}
+                              {isInternalTransfer && (
+                                <div className="inline-flex items-center gap-1">
+                                  {isToCashInternal ? (
+                                    <>
+                                      <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
+                                        Digital
+                                      </span>
+                                      <span className="text-xs text-zinc-400 font-bold">→</span>
+                                      <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
+                                        Cash
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
+                                        Cash
+                                      </span>
+                                      <span className="text-xs text-zinc-400 font-bold">→</span>
+                                      <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
+                                        Digital
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
                               )}
+
+                              {(isSubTransfer || isExpense) && (
+                                <span
+                                  className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                                    isDigitalSource
+                                      ? "text-green-300 bg-green-300/10"
+                                      : "text-[#ffff64] bg-[#ffff64]/10"
+                                  }`}
+                                >
+                                  {isDigitalSource ? "Digital" : "Cash"}
+                                </span>
+                              )}
+
+                              <span className="text-[11px] text-zinc-400">{timeStr}</span>
                             </div>
-                          )}
+                          </div>
+                        </div>
 
-                          {(isSubTransfer || isExpense) && (
-                            <span
-                              className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                                isDigitalSource
-                                  ? "text-green-300 bg-green-300/10"
-                                  : "text-[#ffff64] bg-[#ffff64]/10"
-                              }`}
-                            >
-                              {isDigitalSource ? "Digital" : "Cash"}
-                            </span>
-                          )}
-
-                          <span className="text-[11px] text-zinc-400">{dateStr}</span>
+                        <div className="text-right shrink-0">
+                          <p
+                            className={`text-base font-bold tabular-nums ${
+                              isIncome
+                                ? "text-emerald-400"
+                                : isExpense
+                                  ? "text-rose-400"
+                                  : "text-zinc-200"
+                            }`}
+                          >
+                            {isIncome ? "+" : isExpense ? "-" : ""}
+                            {formatCurrency(tx.amount)}
+                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="text-right shrink-0">
-                      <p
-                        className={`text-base font-bold tabular-nums ${
-                          isIncome
-                            ? "text-emerald-400"
-                            : isExpense
-                              ? "text-rose-400"
-                              : "text-zinc-200"
-                        }`}
-                      >
-                        {isIncome ? "+" : isExpense ? "-" : ""}
-                        {formatCurrency(tx.amount)}
-                      </p>
+                      {/* Note display for Expense */}
+                      {isExpense && tx.description && (
+                        <div className="mt-3 border-t border-zinc-800/40 pt-2.5 pl-12">
+                          {/* <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 block mb-0.5">
+                            Remarks / Note
+                          </span> */}
+                          <span className="flex items-center gap-1 text-xs font-medium text-zinc-200">
+                            <BsArrowReturnRight className="h-3 w-3 text-red-400" />
+                            {tx.description}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Income per-category allocation breakdown display */}
+                      {isIncome && tx.breakdown && Object.keys(tx.breakdown).length > 0 && (
+                        <div className="mt-3 border-t border-zinc-800/40 pt-2.5 pl-12">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                            Allocated per budget category:
+                          </span>
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {Object.entries(tx.breakdown).map(([catName, allocatedAmt]) => (
+                              <span
+                                key={catName}
+                                className="inline-flex items-center gap-1 rounded-lg bg-zinc-950 px-2 py-0.5 text-xs text-zinc-300"
+                              >
+                                <span className="font-medium">{catName}:</span>
+                                <span className="font-mono text-emerald-400">
+                                  +{formatCurrency(allocatedAmt)}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  {/* Note display for Expense */}
-                  {isExpense && tx.description && (
-                    <div className="mt-2 text-xs text-zinc-400 font-medium pl-12">
-                      <span className="text-zinc-300">{tx.description}</span>
-                    </div>
-                  )}
-
-                  {/* Income per-category allocation breakdown display */}
-                  {isIncome && tx.breakdown && Object.keys(tx.breakdown).length > 0 && (
-                    <div className="mt-3 border-t border-zinc-800/40 pt-2.5 pl-12">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                        Allocated per budget category:
-                      </span>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {Object.entries(tx.breakdown).map(([catName, allocatedAmt]) => (
-                          <span
-                            key={catName}
-                            className="inline-flex items-center gap-1 rounded-lg bg-zinc-950 px-2 py-0.5 text-xs text-zinc-300"
-                          >
-                            <span className="font-medium">{catName}:</span>
-                            <span className="font-mono text-emerald-400">
-                              +{formatCurrency(allocatedAmt)}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
+                );
+              });
+            })()
           )}
         </div>
       </div>

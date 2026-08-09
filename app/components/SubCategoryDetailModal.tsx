@@ -5,7 +5,6 @@ import { BsArrowLeftRight, BsDashLg, BsPencil, BsShieldCheck, BsX } from "react-
 import { formatCurrency, getCategoryTotalBalance, type MainCategory, type SubCategory } from "../lib/finance";
 import { useApp } from "../lib/store";
 import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "./CategoryIcon";
-import { Switch } from "./ui/switch";
 
 interface SubCategoryDetailModalProps {
   category: MainCategory | null;
@@ -22,15 +21,11 @@ export function SubCategoryDetailModal({
   onTransferSub,
   onExpenseSub,
 }: SubCategoryDetailModalProps) {
-  const { categories, toggleHideSubCategory, updateSubCategoryIcon } = useApp();
+  const { categories } = useApp();
   const [visible, setVisible] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingSubIconId, setEditingSubIconId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setIsEditing(false);
-      setEditingSubIconId(null);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -74,22 +69,7 @@ export function SubCategoryDetailModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Edit Mode Toggle Button beside Close Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsEditing(!isEditing);
-                setEditingSubIconId(null);
-              }}
-              className={`flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition-all ${
-                isEditing
-                  ? "bg-emerald-500 text-zinc-950 font-bold"
-                  : "bg-zinc-900 text-zinc-300 hover:text-zinc-100"
-              }`}
-            >
-              <BsPencil className="h-3 w-3" />
-              {isEditing ? "Done" : "Edit"}
-            </button>
+
 
             <button
               type="button"
@@ -120,19 +100,9 @@ export function SubCategoryDetailModal({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {/* Sub-stash Custom Icon */}
-                      <button
-                        type="button"
-                        disabled={!isEditing}
-                        onClick={() =>
-                          isEditing && setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
-                        }
-                        className={`flex h-9 w-9 items-center justify-center rounded-full bg-emerald-400 text-zinc-950 transition-colors ${
-                          isEditing ? "hover:bg-zinc-800 cursor-pointer" : "cursor-default"
-                        }`}
-                        title={isEditing ? "Change Sub-stash Icon" : undefined}
-                      >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-400 text-zinc-950 transition-colors">
                         <CategoryIcon iconName={sub.icon} className="h-4.5 w-4.5" />
-                      </button>
+                      </div>
 
                       <div>
                         <div className="flex items-center gap-1.5 flex-wrap">
@@ -150,40 +120,7 @@ export function SubCategoryDetailModal({
                             </span>
                           ) : null}
 
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditingSubIconId(editingSubIconId === sub.id ? null : sub.id)
-                              }
-                              className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                              title="Choose Icon"
-                            >
-                              <BsPencil className="h-3 w-3" />
-                            </button>
-                          )}
                         </div>
-
-                        {/* Hide from total balance Switch (Visible ONLY when isEditing is true) */}
-                        {isEditing && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <Switch
-                              id={`hide-switch-${sub.id}`}
-                              checked={isHidden}
-                              onCheckedChange={() => toggleHideSubCategory(sub.id)}
-                            />
-                            <label
-                              htmlFor={`hide-switch-${sub.id}`}
-                              className="cursor-pointer text-[11px] font-medium select-none"
-                            >
-                              {isHidden ? (
-                                <span className="text-zinc-400 font-semibold">Hide from total</span>
-                              ) : (
-                                <span className="text-zinc-400">Hide from total</span>
-                              )}
-                            </label>
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -192,38 +129,7 @@ export function SubCategoryDetailModal({
                     </p>
                   </div>
 
-                  {/* Icon Chooser for Sub-stash (Visible ONLY in Edit mode) */}
-                  {isEditing && editingSubIconId === sub.id && (
-                    <div className="mt-3 rounded-xl bg-zinc-950 p-3 border border-zinc-800/60">
-                      <span className="text-[11px] font-medium text-zinc-400">
-                        Choose icon for "{sub.name}"
-                      </span>
-                      <div className="mt-2 flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
-                        {CATEGORY_ICON_OPTIONS.map((opt) => {
-                          const IconComp = opt.icon;
-                          const isSelected = (sub.icon || "wallet") === opt.id;
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => {
-                                updateSubCategoryIcon(sub.id, opt.id);
-                                setEditingSubIconId(null);
-                              }}
-                              className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
-                                isSelected
-                                  ? "bg-emerald-500 text-zinc-950 font-bold"
-                                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-100"
-                              }`}
-                              title={opt.label}
-                            >
-                              <IconComp className="h-3.5 w-3.5" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="mt-2.5 flex justify-between border-t border-zinc-800/60 pt-2.5 text-xs text-zinc-400">
                     <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-400/10 px-3 py-1 font-medium text-green-200">

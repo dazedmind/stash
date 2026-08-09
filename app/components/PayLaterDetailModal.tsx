@@ -353,7 +353,7 @@ export function PayLaterDetailModal({
                             {ins.title}
                           </p>
                           <p className="text-[10px] text-zinc-400 mt-0.5">
-                            Due on {dateFormatter(ins.dueDate)} {isPaid && "• Paid ✓"}
+                            Due on {dateFormatter(new Date(ins.dueDate))} {isPaid && "• Paid ✓"}
                           </p>
                         </div>
                       </div>

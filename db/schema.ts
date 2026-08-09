@@ -28,6 +28,7 @@ export const categories = pgTable("categories", {
   percentage: integer("percentage").notNull(),
   icon: text("icon").notNull().default("wallet"),
   isSafe: integer("is_safe").notNull().default(0),
+  isHidden: integer("is_hidden").notNull().default(0),
   overflowSubId: text("overflow_sub_id"),
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -98,4 +99,17 @@ export const payLaterInstallments = pgTable("pay_later_installments", {
   dueDate: text("due_date").notNull(),
   isPaid: integer("is_paid").notNull().default(0),
   paidAt: timestamp("paid_at", { withTimezone: true }),
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  amount: integer("amount").notNull(),
+  billingCycle: text("billing_cycle").notNull().default("monthly"), // "monthly" or "yearly"
+  billingDate: timestamp("billing_date", { withTimezone: true }).notNull(),
+  icon: text("icon").notNull().default("credit-card"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BsCalendarEvent, BsCheckLg, BsCreditCard2Back, BsPlusLg, BsX } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
+import { dateFormatter } from "../lib/dateFormatter";
 
 interface AddPayLaterModalProps {
   open: boolean;
@@ -74,7 +75,7 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/80 backdrop-blur-xs"
+        className="absolute inset-0 bg-black/80"
         onClick={onClose}
       />
 
@@ -87,7 +88,7 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BsCreditCard2Back className="h-5 w-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-zinc-100">Add Pay Later / Card Debt</h2>
+            <h2 className="text-lg font-bold text-zinc-100">Add Pay Later</h2>
           </div>
           <button
             type="button"
@@ -238,7 +239,7 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
               </div>
               <p className="mt-1 text-[11px] text-zinc-500">
                 {isOneTime
-                  ? `Single payment of ${formatCurrency(totalWithInterest)} due on ${dueDate}`
+                  ? `Single payment of ${formatCurrency(totalWithInterest)} due on ${dateFormatter(new Date(dueDate))}`
                   : `Generates ${effectiveMonths} installment checklists averaging ${formatCurrency(autoCalculatedRepayment)}`}
               </p>
             </div>
@@ -249,7 +250,6 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
             disabled={!isValid || loading}
             className="mt-2 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-30"
           >
-            <BsCheckLg className="h-4 w-4" />
             {loading ? "Creating..." : "Save Pay Later Item"}
           </button>
         </form>
