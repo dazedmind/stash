@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { BsCheckLg, BsChevronDown, BsClockHistory, BsCreditCard2Back, BsPlusLg } from "react-icons/bs";
+import Link from "next/link";
 import { AddPayLaterModal } from "../../components/AddPayLaterModal";
 import { PayLaterCardItem, PayLaterDetailModal } from "../../components/PayLaterDetailModal";
 import { TransactionHistoryModal } from "../../components/TransactionHistoryModal";
@@ -103,6 +104,19 @@ export default function PayLaterPage() {
               {formatCurrency(totalMonthlyRepayments)}
             </p>
           </div>
+        </div>
+
+        {/* Subscriptions Link */}
+        <div className="mt-2">
+          <Link
+            href="/pay-later/subscriptions"
+            className="flex items-center justify-between rounded-2xl bg-zinc-900/40 px-4 py-3.5 transition-all hover:bg-zinc-900/60 active:scale-[0.99] border border-zinc-800/30"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-zinc-100">Subscriptions</span>
+            </div>
+            <BsChevronDown className="h-4 w-4 -rotate-90 text-zinc-400" />
+          </Link>
         </div>
 
         {/* Active Cards List */}

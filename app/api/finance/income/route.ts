@@ -108,6 +108,7 @@ export async function POST(req: Request) {
           isHidden: Boolean(s.isHidden),
           isSafe: Boolean(s.isSafe),
           maxCap: s.maxCap || 0,
+          overflowSubId: s.overflowSubId || undefined,
         }))
       );
 

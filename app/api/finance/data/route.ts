@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { categories as categoriesTable, subcategories as subcategoriesTable } from "@/db/schema";
+import { categories as categoriesTable, subcategories as subcategoriesTable, subscriptions as subscriptionsTable } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/app/lib/auth";
 import { seedUserDefaultCategories } from "@/app/lib/seedUserCategories";
@@ -58,9 +58,18 @@ export async function GET(req: Request) {
         })),
     }));
 
+    const userSubscriptions = await db
+      .select()
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.userId, user.id));
+
     return Response.json({
       user,
       categories: formattedCategories,
+      subscriptions: userSubscriptions.map(s => ({
+        ...s,
+        billingDate: s.billingDate.toISOString()
+      })),
     });
   } catch (error) {
     console.error("Fetch finance data error:", error);

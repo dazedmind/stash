@@ -27,8 +27,12 @@ import {
   transferBetweenSubStashes,
   updateCategoryPercentages,
   updateSubCategoryIconInCategories,
+  updateSubCategorySettingsInCategories,
+  updateCategorySettingsInCategories,
+  deleteCategoryFromCategories,
   type MainCategory,
   type SubCategory,
+  type Subscription,
 } from "./finance";
 
 interface UserProfile {
@@ -76,12 +80,18 @@ interface AppContextValue {
   ) => Promise<void>;
   toggleHideSubCategory: (subCategoryId: string) => Promise<void>;
   updateSubCategoryIcon: (subCategoryId: string, icon: string) => Promise<void>;
+  updateSubCategorySettings: (subCategoryId: string, settings: Partial<SubCategory>) => Promise<void>;
+  updateCategorySettings: (categoryId: string, settings: Partial<MainCategory>) => Promise<void>;
+  removeCategory: (categoryId: string) => Promise<void>;
   updateAllocations: (newPercentages: Record<string, number>) => Promise<void>;
   reorderCategories: (newOrderedCategories: MainCategory[]) => Promise<void>;
   addSubCategory: (categoryId: string, name: string, icon?: string) => Promise<void>;
   renameSubCategoryName: (subCategoryId: string, newName: string) => Promise<void>;
   removeSubCategory: (subCategoryId: string) => Promise<void>;
   setMonthlyIncome: (amount: number) => Promise<void>;
+  subscriptions: Subscription[];
+  addSubscription: (sub: Omit<Subscription, "id">) => Promise<void>;
+  removeSubscription: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -89,6 +99,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [categories, setCategories] = useState<MainCategory[]>(() => buildInitialMainCategories());
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [guestMonthlyIncome, setGuestMonthlyIncome] = useState(0);
   const [guestTotalIncome, setGuestTotalIncome] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,6 +113,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setUser(data.user);
           if (data.categories?.length) {
             setCategories(data.categories);
+          }
+          if (data.subscriptions) {
+            setSubscriptions(data.subscriptions);
           }
         }
       } else {
@@ -271,6 +285,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [user, fetchFinanceData]
   );
 
+  const updateSubCategorySettings = useCallback(
+    async (subCategoryId: string, settings: Partial<SubCategory>) => {
+      setCategories((prev) => updateSubCategorySettingsInCategories(prev, subCategoryId, settings));
+
+      if (user) {
+        try {
+          await fetch("/api/finance/subcategories", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subCategoryId, ...settings }),
+          });
+          await fetchFinanceData();
+        } catch (err) {
+          console.error("Update subcategory settings error:", err);
+        }
+      }
+    },
+    [user, fetchFinanceData]
+  );
+
+  const updateCategorySettings = useCallback(
+    async (categoryId: string, settings: Partial<MainCategory>) => {
+      setCategories((prev) => updateCategorySettingsInCategories(prev, categoryId, settings));
+
+      if (user) {
+        try {
+          await fetch("/api/finance/categories", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ categoryId, ...settings }),
+          });
+          await fetchFinanceData();
+        } catch (err) {
+          console.error("Update category settings error:", err);
+        }
+      }
+    },
+    [user, fetchFinanceData]
+  );
+
+  const removeCategory = useCallback(
+    async (categoryId: string) => {
+      setCategories((prev) => deleteCategoryFromCategories(prev, categoryId));
+
+      if (user) {
+        try {
+          await fetch(`/api/finance/categories?id=${categoryId}`, {
+            method: "DELETE",
+          });
+          await fetchFinanceData();
+        } catch (err) {
+          console.error("Delete category persistence error:", err);
+        }
+      }
+    },
+    [user, fetchFinanceData]
+  );
+
   const transferCashDigital = useCallback(
     async (subCategoryId: string, amount: number, direction: "to-cash" | "to-digital") => {
       setCategories((prev) => transferBetweenCashDigital(prev, subCategoryId, amount, direction));
@@ -430,6 +502,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [user, fetchFinanceData]
   );
 
+  const addSubscription = useCallback(
+    async (sub: Omit<Subscription, "id">) => {
+      if (user) {
+        try {
+          const res = await fetch("/api/finance/subscriptions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sub),
+          });
+          if (res.ok) {
+            await fetchFinanceData();
+          }
+        } catch (err) {
+          console.error("Add subscription error:", err);
+        }
+      }
+    },
+    [user, fetchFinanceData]
+  );
+
+  const removeSubscription = useCallback(
+    async (id: string) => {
+      if (user) {
+        try {
+          const res = await fetch(`/api/finance/subscriptions?id=${id}`, {
+            method: "DELETE",
+          });
+          if (res.ok) {
+            await fetchFinanceData();
+          }
+        } catch (err) {
+          console.error("Delete subscription error:", err);
+        }
+      }
+    },
+    [user, fetchFinanceData]
+  );
+
   const value = useMemo<AppContextValue>(() => {
     const monthlyInc = user?.monthlyIncome ?? guestMonthlyIncome;
     const totalInc = user?.totalIncomeReceived ?? guestTotalIncome;
@@ -447,6 +557,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       totalBalance: getTotalBalance(categories),
       totalDigital: getTotalDigital(categories),
       totalCash: getTotalCash(categories),
+      subscriptions,
       login,
       register,
       logout,
@@ -457,17 +568,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       transferSubStash,
       toggleHideSubCategory,
       updateSubCategoryIcon,
+      updateSubCategorySettings,
+      updateCategorySettings,
+      removeCategory,
       updateAllocations,
       reorderCategories,
       addSubCategory,
       renameSubCategoryName,
       removeSubCategory,
       setMonthlyIncome,
+      addSubscription,
+      removeSubscription,
     };
   }, [
     user,
     isLoading,
     categories,
+    subscriptions,
     guestMonthlyIncome,
     guestTotalIncome,
     login,
@@ -480,12 +597,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     transferSubStash,
     toggleHideSubCategory,
     updateSubCategoryIcon,
+    updateSubCategorySettings,
+    updateCategorySettings,
+    removeCategory,
     updateAllocations,
     reorderCategories,
     addSubCategory,
     renameSubCategoryName,
     removeSubCategory,
     setMonthlyIncome,
+    addSubscription,
+    removeSubscription,
   ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
