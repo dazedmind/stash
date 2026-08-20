@@ -95,7 +95,11 @@ export function SubCategoryDetailModal({
               return (
                 <div
                   key={sub.id}
-                  className="rounded-2xl bg-zinc-900/40 p-4 transition-all hover:bg-zinc-900/70"
+                  className={`rounded-2xl bg-zinc-900/40 p-4 transition-all hover:bg-zinc-900/70 ${
+                    isHidden
+                      ? "border-2 border-dashed border-zinc-800 opacity-50"
+                      : "border border-transparent"
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

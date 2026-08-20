@@ -45,7 +45,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { categoryId, name, tag, icon, isSafe, isHidden, overflowSubId } = body;
+    const { categoryId, name, tag, icon, isSafe, isHidden, showInHomescreen, overflowSubId } = body;
 
     if (!categoryId) {
       return Response.json({ error: "Category ID is required" }, { status: 400 });
@@ -57,6 +57,7 @@ export async function PATCH(req: Request) {
     if (icon && typeof icon === "string") updatePayload.icon = icon;
     if (typeof isSafe === "boolean") updatePayload.isSafe = isSafe ? 1 : 0;
     if (typeof isHidden === "boolean") updatePayload.isHidden = isHidden ? 1 : 0;
+    if (typeof showInHomescreen === "boolean") updatePayload.showInHomescreen = showInHomescreen ? 1 : 0;
     if (overflowSubId !== undefined) updatePayload.overflowSubId = overflowSubId || null;
 
     if (Object.keys(updatePayload).length === 0) {
