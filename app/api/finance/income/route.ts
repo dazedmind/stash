@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     }
 
     let totalOverflowPool = 0;
-    const categorySubAllocations: { catId: string; subId: string; addition: number }[] = [];
+    const categorySubAllocations: { catId: string; subId: string; subName: string; addition: number }[] = [];
 
     // Step 1: Compute sub-stash allocations per category and collect true category overflow
     for (const cat of userCategories) {
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
 
       catSubs.forEach((sub) => {
         const addition = subAllocations[sub.id] || 0;
-        categorySubAllocations.push({ catId: cat.id, subId: sub.id, addition });
+        categorySubAllocations.push({ catId: cat.id, subId: sub.id, subName: sub.name, addition });
       });
     }
 
@@ -148,7 +148,7 @@ export async function POST(req: Request) {
           })
           .where(eq(subcategories.id, allocItem.subId));
 
-        breakdown[allocItem.subId] = allocItem.addition;
+        breakdown[allocItem.subName] = (breakdown[allocItem.subName] || 0) + allocItem.addition;
       }
     }
 

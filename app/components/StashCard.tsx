@@ -33,6 +33,10 @@ export function StashCard({
       onClick={onClickCard}
       className={`group cursor-pointer rounded-2xl bg-zinc-900/60 transition-all duration-200 hover:bg-zinc-900 active:scale-[0.99] ${
         compact ? "p-4" : "p-5"
+      } ${
+        category.isHidden
+          ? "border-2 border-dashed border-zinc-800 opacity-50"
+          : "border border-transparent"
       }`}
     >
       <div className="flex items-start justify-between gap-3">

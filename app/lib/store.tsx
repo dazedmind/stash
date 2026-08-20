@@ -80,8 +80,27 @@ interface AppContextValue {
   ) => Promise<void>;
   toggleHideSubCategory: (subCategoryId: string) => Promise<void>;
   updateSubCategoryIcon: (subCategoryId: string, icon: string) => Promise<void>;
-  updateSubCategorySettings: (subCategoryId: string, settings: Partial<SubCategory>) => Promise<void>;
-  updateCategorySettings: (categoryId: string, settings: Partial<MainCategory>) => Promise<void>;
+  updateSubCategorySettings: (
+    subCategoryId: string,
+    settings: {
+      name?: string;
+      maxCap?: number;
+      isHidden?: boolean;
+      isSafe?: boolean;
+      overflowSubId?: string;
+    }
+  ) => Promise<void>;
+  updateCategorySettings: (
+    categoryId: string,
+    settings: {
+      name?: string;
+      icon?: string;
+      isSafe?: boolean;
+      isHidden?: boolean;
+      showInHomescreen?: boolean;
+      overflowSubId?: string;
+    }
+  ) => Promise<void>;
   removeCategory: (categoryId: string) => Promise<void>;
   updateAllocations: (newPercentages: Record<string, number>) => Promise<void>;
   reorderCategories: (newOrderedCategories: MainCategory[]) => Promise<void>;

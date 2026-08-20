@@ -31,6 +31,7 @@ export interface MainCategory {
   icon?: string;
   isSafe?: boolean; // Safe tagging on category level
   isHidden?: boolean; // Hidden from total balance
+  showInHomescreen?: boolean;
   overflowSubId?: string; // Category-level overflow target sub-stash ID
   displayOrder?: number;
   subcategories: SubCategory[];

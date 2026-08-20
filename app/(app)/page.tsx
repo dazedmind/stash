@@ -59,6 +59,8 @@ export default function HomePage() {
     fetchRecentTransactions();
   }, [fetchRecentTransactions, totalBalance, totalIncomeReceived]);
 
+  const homescreenCategories = categories.filter((cat) => cat.showInHomescreen !== false);
+
   return (
     <>
       <div className="animate-fade-in space-y-5 px-4 py-4">
@@ -138,13 +140,13 @@ export default function HomePage() {
         <section className="rounded-2xl bg-zinc-900/60 p-4">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-zinc-200">Budget Categories</h2>
-            {categories.length > 3 && (
-              <span className="text-xs font-bold text-black bg-emerald-400 px-2 rounded-full">{categories.length}</span>
+            {homescreenCategories.length > 3 && (
+              <span className="text-xs font-bold text-black bg-emerald-400 px-2 rounded-full">{homescreenCategories.length}</span>
             )}
           </div>
 
           <div className="mt-3 flex overflow-x-auto gap-2.5 snap-x snap-mandatory scrollbar-none pb-1">
-            {categories.map((cat) => (
+            {homescreenCategories.map((cat) => (
               <div
                 key={cat.id}
                 onClick={() => setSelectedCategoryModal(cat)}
@@ -177,7 +179,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="space-y-3">
-            {categories.map((cat) => (
+            {homescreenCategories.map((cat) => (
               <StashCard
                 key={cat.id}
                 category={cat}

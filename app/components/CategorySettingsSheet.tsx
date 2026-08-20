@@ -21,6 +21,7 @@ export function CategorySettingsSheet({ open, onClose, category }: CategorySetti
   const [icon, setIcon] = useState("wallet");
   const [isSafe, setIsSafe] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
+  const [showInHomescreen, setShowInHomescreen] = useState(true);
 
   // Icon picker state
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
@@ -31,6 +32,7 @@ export function CategorySettingsSheet({ open, onClose, category }: CategorySetti
       setIcon(category.icon || "wallet");
       setIsSafe(!!category.isSafe);
       setIsHidden(!!category.isHidden);
+      setShowInHomescreen(category.showInHomescreen ?? true);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -48,6 +50,7 @@ export function CategorySettingsSheet({ open, onClose, category }: CategorySetti
       icon,
       isSafe,
       isHidden,
+      showInHomescreen,
     });
     onClose();
   }
@@ -180,6 +183,25 @@ export function CategorySettingsSheet({ open, onClose, category }: CategorySetti
               </div>
               <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isHidden ? 'bg-rose-500' : 'bg-zinc-700'}`}>
                 <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${isHidden ? 'translate-x-4.5' : 'translate-x-1'}`} />
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowInHomescreen(!showInHomescreen)}
+              className="flex w-full items-center justify-between rounded-xl bg-zinc-900/40 p-3 hover:bg-zinc-900 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${showInHomescreen ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                  {showInHomescreen ? <BsEye className="h-4 w-4" /> : <BsEyeSlash className="h-4 w-4" />}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-zinc-200">Show in Homescreen</p>
+                  <p className="text-[10px] text-zinc-500">Display this category on the main homescreen</p>
+                </div>
+              </div>
+              <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${showInHomescreen ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${showInHomescreen ? 'translate-x-4.5' : 'translate-x-1'}`} />
               </div>
             </button>
           </div>

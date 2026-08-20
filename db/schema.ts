@@ -29,6 +29,7 @@ export const categories = pgTable("categories", {
   icon: text("icon").notNull().default("wallet"),
   isSafe: integer("is_safe").notNull().default(0),
   isHidden: integer("is_hidden").notNull().default(0),
+  showInHomescreen: integer("show_in_homescreen").notNull().default(1),
   overflowSubId: text("overflow_sub_id"),
   displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

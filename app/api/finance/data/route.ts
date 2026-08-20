@@ -39,6 +39,8 @@ export async function GET(req: Request) {
       percentage: cat.percentage,
       icon: cat.icon || "wallet",
       isSafe: Boolean(cat.isSafe),
+      isHidden: Boolean(cat.isHidden),
+      showInHomescreen: Boolean(cat.showInHomescreen),
       overflowSubId: cat.overflowSubId || undefined,
       displayOrder: cat.displayOrder ?? 0,
       subcategories: userSubcategories
