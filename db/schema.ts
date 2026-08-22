@@ -1,4 +1,4 @@
-import { pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -84,6 +84,7 @@ export const payLaters = pgTable("pay_laters", {
   paymentType: text("payment_type").notNull().default("one_time"),
   months: integer("months").notNull().default(1),
   monthlyPayment: integer("monthly_payment").notNull(),
+  completed: boolean().notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

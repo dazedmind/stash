@@ -72,6 +72,7 @@ export async function POST(req: Request) {
       dueDate: dueDate || new Date().toISOString().split("T")[0],
       paymentType: isOneTime ? "one_time" : "installment",
       months: numMonths,
+      completed: false,
       monthlyPayment,
     });
 

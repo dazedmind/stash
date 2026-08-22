@@ -19,16 +19,16 @@ export function LandingPage() {
         {/* ── Navbar/Header ── */}
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src="/stash-logo.png" className="w-6 h-6" alt="Stash Logo" />
-            <span className="text-sm font-black tracking-widest uppercase text-zinc-100">Stash</span>
+            <img src="/stash-logo.png" className="w-5 h-auto" alt="Stash Logo" />
+            <span className="text-lg font-black tracking-widest uppercase text-zinc-100">Stash</span>
           </div>
-          <button
+          {/* <button
             type="button"
             onClick={() => openAuth("login")}
             className="rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs font-bold text-zinc-300 px-4 py-2 transition-all active:scale-[0.98]"
           >
             Sign in
-          </button>
+          </button> */}
         </header>
 
         {/* ── Hero Section (Split flex layout) ── */}

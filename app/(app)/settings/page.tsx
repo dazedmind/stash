@@ -36,9 +36,6 @@ export default function SettingsPage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Appearance
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
   // Overflow
   const [overflowSubId, setOverflowSubId] = useState("");
 
@@ -56,7 +53,7 @@ export default function SettingsPage() {
     const firstSub = allSubcategories[0]?.id || "";
     setOverflowSubId(localStorage.getItem("global_overflow_sub_id") || firstSub);
     const saved = (localStorage.getItem("theme") as "dark" | "light") || "dark";
-    setTheme(saved);
+    // setTheme(saved);
   }, [user, allSubcategories]);
 
   useEffect(() => {
@@ -126,13 +123,6 @@ export default function SettingsPage() {
     } finally {
       setIsSavingPassword(false);
     }
-  }
-
-  function handleToggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    localStorage.setItem("theme", next);
-    document.documentElement.classList.toggle("light", next === "light");
   }
 
   function handleSaveOverflow(subId: string) {
@@ -292,48 +282,6 @@ export default function SettingsPage() {
               <BsLock className="h-4 w-4" />
               {isSavingPassword ? "Saving…" : "Change Password"}
             </button>
-          </div>
-        </section>
-
-        {/* ── Appearance Section ── */}
-        <section className="rounded-2xl bg-zinc-900/60 border border-zinc-800/40 overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800/30">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Appearance</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleToggleTheme}
-            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-zinc-800/30 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              {theme === "dark" ? (
-                <BsMoon className="h-4 w-4 text-zinc-400" />
-              ) : (
-                <BsSun className="h-4 w-4 text-zinc-400" />
-              )}
-              <span className="text-sm font-medium text-zinc-200">
-                {theme === "dark" ? "Dark Mode" : "Light Mode"}
-              </span>
-            </div>
-            <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${theme === "dark" ? "bg-emerald-500" : "bg-zinc-700"}`}>
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${theme === "dark" ? "translate-x-4.5" : "translate-x-1"}`} />
-            </div>
-          </button>
-        </section>
-
-        {/* ── Allocation Section ── */}
-        <section className="rounded-2xl bg-zinc-900/60 border border-zinc-800/40 overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-800/30">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Allocation</p>
-          </div>
-          <div className="px-4 py-4">
-            <StashSelectCard
-              dropUp
-              label="Default Overflow Target Stash"
-              selectedSubId={overflowSubId}
-              categories={categories}
-              onSelect={handleSaveOverflow}
-            />
           </div>
         </section>
 

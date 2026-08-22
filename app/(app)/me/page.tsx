@@ -3,16 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  BsArrowDownRight,
   BsArrowUpRight,
   BsBoxArrowRight,
-  BsCheckLg,
   BsChevronRight,
-  BsCreditCard,
+  BsMoon,
+  BsSun,
   BsGear,
-  BsLightningCharge,
-  BsPerson,
-  BsPieChart,
   BsWallet2,
   BsExclamationTriangle,
   BsTrash,
@@ -37,6 +33,7 @@ interface PayLaterItem {
   name: string;
   totalAmount: number;
   monthlyPayment: number;
+  completed: boolean;
 }
 
 export default function MePage() {
@@ -62,6 +59,8 @@ export default function MePage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const deleteInputRef = useRef<HTMLInputElement>(null);
+
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -127,22 +126,9 @@ export default function MePage() {
     return d.getDate() === now.getDate() && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
 
-  const monthlySpent = currentMonthTxs
-    .filter((tx) => tx.type === "expense")
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
   const dailySpent = currentDayTxs
     .filter((tx) => tx.type === "expense")
     .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const monthlyIncomeDeposits = currentMonthTxs
-    .filter((tx) => tx.type === "income")
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const netCashflow = monthlyIncomeDeposits - monthlySpent;
-
-  const digitalPct = totalBalance > 0 ? Math.round((totalDigital / totalBalance) * 100) : 0;
-  const cashPct = totalBalance > 0 ? Math.round((totalCash / totalBalance) * 100) : 0;
 
   const categorySpendMap: Record<string, number> = {};
   for (const tx of currentMonthTxs) {
@@ -152,13 +138,12 @@ export default function MePage() {
     }
   }
 
-  const topSpendCategories = Object.entries(categorySpendMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4);
-
-  const activePayLaters = payLaters.length;
-  const totalMonthlyPayLater = payLaters.reduce((acc, pl) => acc + (pl.monthlyPayment || 0), 0);
-
+  function handleToggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    document.documentElement.classList.toggle("light", next === "light");
+  }
   // ── Authenticated: Account overview (original layout) ──────────────────────
   return (
     <>
@@ -237,7 +222,6 @@ export default function MePage() {
           <div className="space-y-2 pt-1">
             <div className="pt-1">
               <StashSelectCard
-                dropUp
                 label="Default Overflow Target Stash"
                 selectedSubId={overflowSubId}
                 categories={categories}
@@ -248,7 +232,7 @@ export default function MePage() {
         </section>
 
         {/* Pay Later Summary */}
-        {activePayLaters > 0 && (
+        {/* {activePayLaters > 0 && (
           <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -266,7 +250,59 @@ export default function MePage() {
               </span>
             </div>
           </section>
-        )}
+        )} */}
+
+        {/* ── Appearance Section ── */}
+        <section className="rounded-2xl bg-zinc-900/60 border border-zinc-800/40 overflow-hidden">
+          <div className="px-4 py-3 border-b border-zinc-800/30">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Appearance</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleTheme}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-zinc-800/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              {theme === "dark" ? (
+                <BsMoon className="h-4 w-4 text-zinc-400" />
+              ) : (
+                <BsSun className="h-4 w-4 text-zinc-400" />
+              )}
+              <span className="text-sm font-medium text-zinc-200">
+                {theme === "dark" ? "Dark Mode" : "Light Mode"}
+              </span>
+            </div>
+            <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${theme === "dark" ? "bg-emerald-500" : "bg-zinc-700"}`}>
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${theme === "dark" ? "translate-x-4.5" : "translate-x-1"}`} />
+            </div>
+          </button>
+        </section>
+
+        <section className="rounded-2xl bg-zinc-900/60 border border-zinc-800/40 overflow-hidden">
+          <div className="px-4 py-3 border-b border-zinc-800/30">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-rose-500/70">Danger Zone</p>
+          </div>
+          <button
+            type="button"
+            onClick={logout}
+            className="flex w-full items-center justify-between px-4 py-3.5 border-b border-zinc-800/30 hover:bg-zinc-800/30 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <BsBoxArrowRight className="h-4 w-4 text-zinc-400" />
+              <span className="text-sm font-medium text-zinc-200">Sign Out</span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="flex w-full items-center justify-between px-4 py-3.5 hover:bg-rose-500/5 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <BsTrash className="h-4 w-4 text-rose-400" />
+              <span className="text-sm font-medium text-rose-400">Delete Account</span>
+            </div>
+          </button>
+        </section>
       </div>
 
       {/* Delete Account Modal */}
