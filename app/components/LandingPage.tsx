@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { AuthModal } from "./AuthModal";
+import { AiTwotoneBuild, AiTwotoneCalendar, AiTwotoneCreditCard, AiTwotoneGold, AiTwotoneProject, AiTwotoneSliders } from "react-icons/ai";
+import { PiBracketsSquareDuotone, PiCalendarDuotone, PiScrollDuotone, PiSealPercentDuotone } from "react-icons/pi";
 
 export function LandingPage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -45,18 +47,18 @@ export function LandingPage() {
               Stash splits your income across budget categories, tracks every expense, and keeps your finances clear — all in one place.
             </p>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            <div className="pt-2 flex flex-row gap-3 w-full">
               <button
                 type="button"
                 onClick={() => openAuth("register")}
-                className="min-h-[50px] px-8 rounded-2xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99]"
+                className="min-h-[50px] w-full px-8 rounded-2xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99]"
               >
                 Get Started
               </button>
               <button
                 type="button"
                 onClick={() => openAuth("login")}
-                className="min-h-[46px] px-8 rounded-2xl bg-zinc-900 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-800 active:scale-[0.99]"
+                className="min-h-[46px] w-full px-8 rounded-2xl bg-zinc-900 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-800 active:scale-[0.99]"
               >
                 Sign in
               </button>
@@ -85,13 +87,15 @@ export function LandingPage() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl bg-zinc-900/40 border border-zinc-800/30 p-5">
-              <p className="text-sm font-bold text-zinc-100 mb-1.5">Budget by category</p>
+              <PiSealPercentDuotone className="h-6 w-6 text-emerald-400 mb-2" />
+              <p className="text-sm font-bold text-zinc-100 mb-1.5">Automatic Allocation</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Assign a percentage of your income to Savings, Expenses, and Liabilities. Stash distributes funds automatically whenever income arrives.
               </p>
             </div>
 
             <div className="rounded-2xl bg-zinc-900/40 border border-zinc-800/30 p-5">
+              <PiBracketsSquareDuotone className="h-6 w-6 text-emerald-400 mb-2" />
               <p className="text-sm font-bold text-zinc-100 mb-1.5">Sub-stashes with caps & overflow</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Break each category into named stashes — Rent, Food, Emergency Fund. Set limits and automatically redirect excess to wherever it should go.
@@ -99,6 +103,7 @@ export function LandingPage() {
             </div>
 
             <div className="rounded-2xl bg-zinc-900/40 border border-zinc-800/30 p-5">
+              <PiScrollDuotone className="h-6 w-6 text-emerald-400 mb-2" />
               <p className="text-sm font-bold text-zinc-100 mb-1.5">Pay Later tracking</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Log installment plans and one-time obligations. Mark payments done and optionally deduct the amount directly from a stash.
@@ -106,6 +111,7 @@ export function LandingPage() {
             </div>
 
             <div className="rounded-2xl bg-zinc-900/40 border border-zinc-800/30 p-5">
+              <PiCalendarDuotone className="h-6 w-6 text-emerald-400 mb-2" />
               <p className="text-sm font-bold text-zinc-100 mb-1.5">Subscriptions calendar</p>
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Add recurring bills and see upcoming charges on a calendar. Icons appear on billing dates so nothing slips through.
