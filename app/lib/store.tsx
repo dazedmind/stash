@@ -84,6 +84,7 @@ interface AppContextValue {
     subCategoryId: string,
     settings: {
       name?: string;
+      icon?: string;
       maxCap?: number;
       isHidden?: boolean;
       isSafe?: boolean;

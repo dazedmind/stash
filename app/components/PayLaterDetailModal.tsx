@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsCheckCircleFill, BsCircle, BsCreditCard2Back, BsPencil, BsTrash, BsX } from "react-icons/bs";
+import {
+  BsCheckCircleFill,
+  BsCircle,
+  BsCreditCard2Back,
+  BsPencil,
+  BsTrash,
+  BsX,
+  BsCheck2,
+} from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
+import { useApp } from "../lib/store";
 import { ConfirmModal } from "./ConfirmModal";
+import { PayInstallmentSheet } from "./PayInstallmentSheet";
 import { dateFormatter } from "../lib/dateFormatter";
 
 export interface PayLaterInstallmentItem {
@@ -55,6 +65,7 @@ export function PayLaterDetailModal({
   onClose,
   onRefresh,
 }: PayLaterDetailModalProps) {
+  const { refreshData } = useApp();
   const [installments, setInstallments] = useState<PayLaterInstallmentItem[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
@@ -66,12 +77,27 @@ export function PayLaterDetailModal({
   const [editingName, setEditingName] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
 
+  // Edit Details panel
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editTotalAmount, setEditTotalAmount] = useState("");
+  const [editMonthlyPayment, setEditMonthlyPayment] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+
+  // Pay installment sheet
+  const [pendingInstallment, setPendingInstallment] = useState<PayLaterInstallmentItem | null>(null);
+
   useEffect(() => {
     if (open && item) {
       setInstallments(item.installments || []);
       setShowDeleteConfirm(false);
       setIsEditingName(false);
       setEditingName(item.name);
+      setIsEditingDetails(false);
+      setEditTotalAmount(String(item.totalAmount));
+      setEditMonthlyPayment(String(item.monthlyPayment));
+      setEditDueDate(item.dueDate);
+      setPendingInstallment(null);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
@@ -90,15 +116,11 @@ export function PayLaterDetailModal({
   const remainingOwed = Math.max(0, totalAmountWithInterest - paidAmount);
   const progressPercent = totalInstallments > 0 ? Math.round((paidCount / totalInstallments) * 100) : 0;
 
-  // Dynamic sorting: Unpaid (0) at top in chronological order, Paid (1) at bottom
   const sortedInstallments = [...installments].sort((a, b) => {
-    if (a.isPaid !== b.isPaid) {
-      return a.isPaid - b.isPaid;
-    }
+    if (a.isPaid !== b.isPaid) return a.isPaid - b.isPaid;
     return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
   });
 
-  // Calculate days until next due date
   const nextUnpaidInstallment = sortedInstallments.find((ins) => ins.isPaid === 0);
   const targetDueDate = nextUnpaidInstallment ? nextUnpaidInstallment.dueDate : item.dueDate;
   const daysUntilDue = getDaysUntilDue(targetDueDate);
@@ -107,37 +129,60 @@ export function PayLaterDetailModal({
   if (paidCount === totalInstallments && totalInstallments > 0) {
     daysTilDueText = "All paid ✓";
   } else if (daysUntilDue !== null) {
-    if (daysUntilDue > 1) {
-      daysTilDueText = `${daysUntilDue} days left`;
-    } else if (daysUntilDue === 1) {
-      daysTilDueText = "1 day left";
-    } else if (daysUntilDue === 0) {
-      daysTilDueText = "Due today";
+    if (daysUntilDue > 1) daysTilDueText = `${daysUntilDue} days left`;
+    else if (daysUntilDue === 1) daysTilDueText = "1 day left";
+    else if (daysUntilDue === 0) daysTilDueText = "Due today";
+    else daysTilDueText = `${Math.abs(daysUntilDue)} days overdue`;
+  }
+
+  // ── Handlers ────────────────────────────────────────────────────
+
+  function handleInstallmentClick(ins: PayLaterInstallmentItem) {
+    if (ins.isPaid === 1) {
+      // Already paid → unmark directly, no prompt
+      handleTogglePaid(ins.id, 1, undefined);
     } else {
-      daysTilDueText = `${Math.abs(daysUntilDue)} days overdue`;
+      // Unpaid → open stash-selection sheet
+      setPendingInstallment(ins);
     }
   }
 
-  async function handleTogglePaid(insId: string, currentPaid: number) {
+  async function handleTogglePaid(insId: string, currentPaid: number, subCategoryId: string | undefined) {
     const nextPaid = currentPaid === 1 ? 0 : 1;
 
     setInstallments((prev) =>
       prev.map((ins) => (ins.id === insId ? { ...ins, isPaid: nextPaid } : ins))
     );
-
     setLoadingId(insId);
+
     try {
       await fetch("/api/pay-later", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ installmentId: insId, isPaid: nextPaid === 1 }),
+        body: JSON.stringify({
+          installmentId: insId,
+          isPaid: nextPaid === 1,
+          subCategoryId: nextPaid === 1 ? subCategoryId : undefined,
+        }),
       });
       onRefresh();
+      if (nextPaid === 1 && subCategoryId) {
+        // Refresh app store so stash balances update
+        refreshData();
+      }
     } catch (err) {
       console.error("Toggle installment error:", err);
     } finally {
       setLoadingId(null);
     }
+  }
+
+  async function handlePayWithDeduction(installmentId: string, subCategoryId: string) {
+    await handleTogglePaid(installmentId, 0, subCategoryId);
+  }
+
+  async function handlePayWithoutDeduction(installmentId: string) {
+    await handleTogglePaid(installmentId, 0, undefined);
   }
 
   async function handleSaveRename() {
@@ -151,7 +196,6 @@ export function PayLaterDetailModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payLaterId: item.id, name: trimmed }),
       });
-
       if (res.ok) {
         setIsEditingName(false);
         onRefresh();
@@ -160,6 +204,31 @@ export function PayLaterDetailModal({
       console.error("Rename Pay Later error:", err);
     } finally {
       setIsSavingName(false);
+    }
+  }
+
+  async function handleSaveDetails() {
+    if (!item || isSavingDetails) return;
+    setIsSavingDetails(true);
+    try {
+      const res = await fetch("/api/pay-later", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payLaterId: item.id,
+          totalAmount: Number(editTotalAmount.replace(/\D/g, "")),
+          monthlyPayment: Number(editMonthlyPayment.replace(/\D/g, "")),
+          dueDate: editDueDate,
+        }),
+      });
+      if (res.ok) {
+        setIsEditingDetails(false);
+        onRefresh();
+      }
+    } catch (err) {
+      console.error("Edit Pay Later details error:", err);
+    } finally {
+      setIsSavingDetails(false);
     }
   }
 
@@ -210,9 +279,7 @@ export function PayLaterDetailModal({
                       type="text"
                       value={editingName}
                       onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveRename();
-                      }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleSaveRename(); }}
                       className="min-h-[34px] w-full rounded-xl bg-zinc-900 px-2.5 text-sm font-bold text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                     <button
@@ -229,10 +296,7 @@ export function PayLaterDetailModal({
                     <h2 className="text-lg font-bold text-zinc-100 truncate">{item.name}</h2>
                     <button
                       type="button"
-                      onClick={() => {
-                        setEditingName(item.name);
-                        setIsEditingName(true);
-                      }}
+                      onClick={() => { setEditingName(item.name); setIsEditingName(true); }}
                       className="text-zinc-400 hover:text-zinc-100 transition-colors"
                       title="Rename"
                     >
@@ -249,6 +313,19 @@ export function PayLaterDetailModal({
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              {/* Edit Details Button */}
+              <button
+                type="button"
+                onClick={() => setIsEditingDetails((v) => !v)}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                  isEditingDetails
+                    ? "bg-emerald-500/20 text-emerald-400"
+                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-200"
+                }`}
+                title="Edit Details"
+              >
+                <BsPencil className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
@@ -266,6 +343,70 @@ export function PayLaterDetailModal({
               </button>
             </div>
           </header>
+
+          {/* ── Edit Details Panel ── */}
+          {isEditingDetails && (
+            <div className="mt-4 rounded-2xl bg-zinc-900/80 p-4 border border-zinc-800/60 space-y-4 animate-fade-in">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Edit Details</h3>
+
+              <label className="block">
+                <span className="text-xs text-zinc-400 font-medium ml-1">Total Amount</span>
+                <div className="relative mt-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₱</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={editTotalAmount}
+                    onChange={(e) => setEditTotalAmount(e.target.value.replace(/\D/g, ""))}
+                    className="w-full rounded-xl bg-zinc-950 pl-8 pr-4 py-2.5 text-sm font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-zinc-400 font-medium ml-1">Monthly Payment</span>
+                <div className="relative mt-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₱</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={editMonthlyPayment}
+                    onChange={(e) => setEditMonthlyPayment(e.target.value.replace(/\D/g, ""))}
+                    className="w-full rounded-xl bg-zinc-950 pl-8 pr-4 py-2.5 text-sm font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="text-xs text-zinc-400 font-medium ml-1">Due Date</span>
+                <input
+                  type="date"
+                  value={editDueDate}
+                  onChange={(e) => setEditDueDate(e.target.value)}
+                  className="mt-1 w-full rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]"
+                />
+              </label>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDetails(false)}
+                  className="flex-1 rounded-xl bg-zinc-800 py-2.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDetails}
+                  disabled={isSavingDetails}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-2.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+                >
+                  <BsCheck2 className="h-4 w-4" />
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Financial Progress Banner */}
           <div className="mt-4 rounded-2xl bg-zinc-900/60 p-4">
@@ -304,7 +445,7 @@ export function PayLaterDetailModal({
             </div>
           </div>
 
-          {/* TO-DO List Checkbox Section */}
+          {/* Payment Schedule */}
           <section className="mt-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
@@ -325,7 +466,7 @@ export function PayLaterDetailModal({
                   return (
                     <div
                       key={ins.id}
-                      onClick={() => handleTogglePaid(ins.id, ins.isPaid)}
+                      onClick={() => loadingId !== ins.id && handleInstallmentClick(ins)}
                       className={`flex cursor-pointer items-center justify-between rounded-xl p-3.5 transition-all ${
                         isPaid
                           ? "bg-zinc-900/30 opacity-75"
@@ -345,11 +486,7 @@ export function PayLaterDetailModal({
                           )}
                         </button>
                         <div>
-                          <p
-                            className={`text-xs font-semibold ${
-                              isPaid ? "line-through text-zinc-500" : "text-zinc-100"
-                            }`}
-                          >
+                          <p className={`text-xs font-semibold ${isPaid ? "line-through text-zinc-500" : "text-zinc-100"}`}>
                             {ins.title}
                           </p>
                           <p className="text-[10px] text-zinc-400 mt-0.5">
@@ -359,11 +496,7 @@ export function PayLaterDetailModal({
                       </div>
 
                       <div className="text-right">
-                        <p
-                          className={`text-sm font-bold font-mono ${
-                            isPaid ? "line-through text-zinc-500" : "text-emerald-400"
-                          }`}
-                        >
+                        <p className={`text-sm font-bold font-mono ${isPaid ? "line-through text-zinc-500" : "text-emerald-400"}`}>
                           {formatCurrency(ins.amount)}
                         </p>
                       </div>
@@ -376,7 +509,16 @@ export function PayLaterDetailModal({
         </div>
       </div>
 
-      {/* Confirmation Modal for Pay Later Deletion */}
+      {/* Pay Installment Sheet */}
+      <PayInstallmentSheet
+        open={!!pendingInstallment}
+        installment={pendingInstallment}
+        onClose={() => setPendingInstallment(null)}
+        onPayWithDeduction={handlePayWithDeduction}
+        onPayWithoutDeduction={handlePayWithoutDeduction}
+      />
+
+      {/* Delete Confirm */}
       <ConfirmModal
         open={showDeleteConfirm}
         title="Delete Pay Later Card"

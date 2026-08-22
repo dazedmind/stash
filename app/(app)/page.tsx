@@ -186,6 +186,7 @@ export default function HomePage() {
                 compact
                 onClickCard={() => setSelectedCategoryModal(cat)}
                 onTransfer={() => setSelectedCategoryModal(cat)}
+                totalHidden={totalHidden}
               />
             ))}
           </div>

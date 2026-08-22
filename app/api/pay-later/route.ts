@@ -121,17 +121,23 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { installmentId, isPaid, payLaterId, name } = body;
+    const { installmentId, isPaid, subCategoryId, payLaterId, name, totalAmount, monthlyPayment, dueDate } = body;
 
-    // Handle Pay Later item rename
-    if (payLaterId && name && typeof name === "string") {
-      const trimmedName = name.trim();
-      if (!trimmedName) {
-        return Response.json({ error: "Name cannot be empty" }, { status: 400 });
+    // Handle Pay Later item field updates (name, amounts, dueDate)
+    if (payLaterId && !installmentId) {
+      const updatePayload: Record<string, any> = {};
+      if (name && typeof name === "string") updatePayload.name = name.trim();
+      if (totalAmount !== undefined) updatePayload.totalAmount = Number(totalAmount);
+      if (monthlyPayment !== undefined) updatePayload.monthlyPayment = Number(monthlyPayment);
+      if (dueDate && typeof dueDate === "string") updatePayload.dueDate = dueDate;
+
+      if (Object.keys(updatePayload).length === 0) {
+        return Response.json({ error: "No fields to update" }, { status: 400 });
       }
+
       await db
         .update(payLaters)
-        .set({ name: trimmedName })
+        .set(updatePayload)
         .where(and(eq(payLaters.id, payLaterId), eq(payLaters.userId, user.id)));
 
       return Response.json({ success: true });
@@ -147,6 +153,44 @@ export async function PATCH(req: Request) {
           paidAt: paidVal ? new Date() : null,
         })
         .where(and(eq(payLaterInstallments.id, installmentId), eq(payLaterInstallments.userId, user.id)));
+
+      // If marking as paid and a stash was selected, record an expense transaction
+      if (paidVal === 1 && subCategoryId) {
+        // Get installment amount
+        const [ins] = await db
+          .select()
+          .from(payLaterInstallments)
+          .where(and(eq(payLaterInstallments.id, installmentId), eq(payLaterInstallments.userId, user.id)));
+
+        if (ins) {
+          // Deduct from subcategory
+          const { subcategories, transactions } = await import("@/db/schema");
+          const { sql } = await import("drizzle-orm");
+          const { generateId: genId } = await import("@/app/lib/auth");
+
+          await db
+            .update(subcategories)
+            .set({ digital: sql`${subcategories.digital} - ${ins.amount}` })
+            .where(and(eq(subcategories.id, subCategoryId), eq(subcategories.userId, user.id)));
+
+          // Get sub name for transaction description
+          const [sub] = await db
+            .select()
+            .from(subcategories)
+            .where(and(eq(subcategories.id, subCategoryId), eq(subcategories.userId, user.id)));
+
+          await db.insert(transactions).values({
+            id: genId(),
+            userId: user.id,
+            subCategoryId,
+            type: "expense",
+            amount: ins.amount,
+            source: "digital",
+            description: `Pay Later: ${ins.title}`,
+            details: JSON.stringify({ note: ins.title }),
+          });
+        }
+      }
 
       return Response.json({ success: true });
     }

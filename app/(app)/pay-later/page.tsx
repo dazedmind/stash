@@ -196,7 +196,7 @@ export default function PayLaterPage() {
                     <div className="flex items-center justify-between text-[11px] font-medium text-zinc-400">
                       <span>Payment Progress</span>
                       <span className="text-zinc-400 font-mono">
-                        {paidCount} / {totalCount} paid ({progressPct}%)
+                        {paidCount} / {totalCount} paid
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-950">

@@ -54,8 +54,8 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
       <div className="relative w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl animate-fade-in">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-            S
+          <div className="mx-auto flex h-12 w-12 items-center justify-center">
+            <img src="/stash-logo.png" className="h-auto w-5" alt="Stash Logo" />
           </div>
           <h2 className="mt-3 text-xl font-bold text-zinc-100">
             {mode === "login" ? "Welcome Back" : "Create Account"}
@@ -63,7 +63,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <p className="mt-1 text-xs text-zinc-400">
             {mode === "login"
               ? "Sign in to access your stashes & budget"
-              : "Register to manage your stashes with Neon DB"}
+              : "Register to manage your stashes"}
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-3.5">
+        <form onSubmit={handleSubmit} className="mt-2 space-y-2">
           {mode === "register" && (
             <div>
               <span className="text-xs font-medium text-zinc-400">Name</span>
@@ -125,19 +125,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-40"
+            className="mt-5 flex min-h-[48px] w-full items-center justify-center upper gap-2 rounded-xl bg-emerald-500 text-base font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-40"
           >
             {loading ? (
               "Processing..."
-            ) : mode === "login" ? (
-              <>
-                <BsCheckLg className="h-4 w-4" /> Sign In
-              </>
-            ) : (
-              <>
-                <BsPlusLg className="h-4 w-4" /> Create Account
-              </>
-            )}
+            ) : mode === "login" ? ( "Sign In" ) : ( "Create Account" )}
           </button>
         </form>
 
