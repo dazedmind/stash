@@ -1,6 +1,6 @@
 "use client";
 
-import { BsEyeSlash } from "react-icons/bs";
+import { BsEyeSlash, BsCash, BsCreditCard, BsBank2} from "react-icons/bs";
 import {
   formatCurrency,
   getCategoryTotalBalance,
@@ -9,6 +9,7 @@ import {
   type MainCategory,
 } from "../lib/finance";
 import { CategoryIcon } from "./CategoryIcon";
+import { CiBank, CiCoinInsert, CiMoneyBill } from "react-icons/ci";
 
 interface StashCardProps {
   category: MainCategory;
@@ -82,10 +83,12 @@ export function StashCard({
 
       <div className="mt-3.5 flex justify-between border-t border-zinc-800/40 pt-3 text-xs">
         <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-800/50 px-3 py-1 font-medium text-green-200">
-          Digital: <strong className="font-mono ">{!totalHidden ? formatCurrency(digital) : "*****"}</strong>
+          <CiBank className="h-4 w-4" />
+           {!totalHidden ? formatCurrency(digital) : "*****"}
         </span>
         <span className="w-fit inline-flex items-center gap-1.5 rounded-full bg-neutral-800/50 px-3 py-1 font-medium text-emerald-200">
-          Cash: <strong className="font-mono ">{!totalHidden ? formatCurrency(cash) : "*****"}</strong>
+          <CiMoneyBill className="h-4 w-4" />
+           {!totalHidden ? formatCurrency(cash) : "*****"}
         </span>
       </div>
     </article>

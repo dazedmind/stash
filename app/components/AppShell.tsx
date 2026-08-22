@@ -6,10 +6,26 @@ import { BottomNav } from "./BottomNav";
 import { ExpenseSheet } from "./ExpenseSheet";
 import { IncomeSheet } from "./IncomeSheet";
 
+import { useApp } from "../lib/store";
+import { LandingPage } from "./LandingPage";
+
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useApp();
   const [actionChoiceOpen, setActionChoiceOpen] = useState(false);
   const [incomeSheetOpen, setIncomeSheetOpen] = useState(false);
   const [expenseSheetOpen, setExpenseSheetOpen] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LandingPage />;
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-slate-100">
