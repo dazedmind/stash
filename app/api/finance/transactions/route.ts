@@ -10,6 +10,10 @@ export async function GET(req: Request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const limitParam = searchParams.get("limit");
+    const limitVal = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 50, 1), 1000) : 50;
+
     const logs = await db
       .select({
         id: transactions.id,
@@ -25,7 +29,7 @@ export async function GET(req: Request) {
       .leftJoin(subcategories, eq(transactions.subCategoryId, subcategories.id))
       .where(eq(transactions.userId, user.id))
       .orderBy(desc(transactions.createdAt))
-      .limit(50);
+      .limit(limitVal);
 
     const formattedLogs = logs.map((log) => {
       let parsedDetails: Record<string, number> | null = null;
