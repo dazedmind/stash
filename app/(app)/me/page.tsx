@@ -18,6 +18,21 @@ import { StashSelectCard } from "../../components/StashSelectCard";
 import { formatCurrency } from "../../lib/finance";
 import { useApp } from "../../lib/store";
 
+function getCurvePath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return "";
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const cp1x = p0.x + (p1.x - p0.x) / 3;
+    const cp1y = p0.y;
+    const cp2x = p0.x + 2 * (p1.x - p0.x) / 3;
+    const cp2y = p1.y;
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+  }
+  return d;
+}
+
 interface TransactionLog {
   id: string;
   type: "income" | "expense" | "transfer_internal" | "transfer_sub";
@@ -62,11 +77,14 @@ export default function MePage() {
 
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
+  const [spendingPeriod, setSpendingPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
+
   useEffect(() => {
     async function loadDashboardData() {
       try {
         const [txRes, plRes] = await Promise.all([
-          fetch("/api/finance/transactions"),
+          fetch("/api/finance/transactions?limit=500"),
           fetch("/api/pay-later"),
         ]);
         const txData = await txRes.json();
@@ -136,6 +154,150 @@ export default function MePage() {
       const name = tx.subCategoryName || "General Expense";
       categorySpendMap[name] = (categorySpendMap[name] || 0) + tx.amount;
     }
+  }
+
+  // Grouped datasets for Spending Dashboard
+  const expenseTransactions = transactions.filter((tx) => tx.type === "expense");
+
+  // 1. Daily (last 7 days including today)
+  const dailyData: { date: Date; label: string; amount: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dailyData.push({
+      date: d,
+      label: d.toLocaleDateString("en-US", { weekday: "short" }),
+      amount: 0,
+    });
+  }
+  dailyData.forEach((item) => {
+    const targetY = item.date.getFullYear();
+    const targetM = item.date.getMonth();
+    const targetD = item.date.getDate();
+    const dayExpenses = expenseTransactions.filter((tx) => {
+      const txDate = new Date(tx.createdAt);
+      return (
+        txDate.getFullYear() === targetY &&
+        txDate.getMonth() === targetM &&
+        txDate.getDate() === targetD
+      );
+    });
+    item.amount = dayExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+  });
+
+  // 2. Weekly (last 4 weeks)
+  const weeklyData: { start: Date; end: Date; label: string; amount: number }[] = [];
+  for (let i = 3; i >= 0; i--) {
+    const start = new Date();
+    start.setDate(start.getDate() - (i * 7 + 6));
+    const end = new Date();
+    end.setDate(end.getDate() - i * 7);
+
+    const labelStart = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const labelEnd = end.toLocaleDateString("en-US", {
+      month: start.getMonth() === end.getMonth() ? undefined : "short",
+      day: "numeric",
+    });
+
+    weeklyData.push({
+      start,
+      end,
+      label: `${labelStart}–${labelEnd}`,
+      amount: 0,
+    });
+  }
+  weeklyData.forEach((item) => {
+    const startCopy = new Date(item.start);
+    startCopy.setHours(0, 0, 0, 0);
+    const endCopy = new Date(item.end);
+    endCopy.setHours(23, 59, 59, 999);
+
+    const weekExpenses = expenseTransactions.filter((tx) => {
+      const txDate = new Date(tx.createdAt);
+      return txDate >= startCopy && txDate <= endCopy;
+    });
+    item.amount = weekExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+  });
+
+  // 3. Monthly (last 6 months including current month)
+  const monthlyData: { year: number; month: number; label: string; amount: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    monthlyData.push({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      label: d.toLocaleDateString("en-US", { month: "short" }),
+      amount: 0,
+    });
+  }
+  monthlyData.forEach((item) => {
+    const monthExpenses = expenseTransactions.filter((tx) => {
+      const txDate = new Date(tx.createdAt);
+      return txDate.getFullYear() === item.year && txDate.getMonth() === item.month;
+    });
+    item.amount = monthExpenses.reduce((sum, tx) => sum + tx.amount, 0);
+  });
+
+  // Determine current active dataset
+  const activeData =
+    spendingPeriod === "daily"
+      ? dailyData
+      : spendingPeriod === "weekly"
+        ? weeklyData
+        : monthlyData;
+
+  const maxVal = Math.max(...activeData.map((d) => d.amount), 0) || 1000;
+
+  // Chart configuration
+  const chartWidth = 400;
+  const chartHeight = 140;
+  const paddingX = 25;
+  const paddingY = 20;
+  const stepX = (chartWidth - 2 * paddingX) / (activeData.length - 1);
+
+  const points = activeData.map((d, i) => {
+    const x = paddingX + i * stepX;
+    const y =
+      chartHeight -
+      paddingY -
+      (d.amount / maxVal) * (chartHeight - 2 * paddingY);
+    return { x, y, label: d.label, amount: d.amount };
+  });
+
+  // Generate SVG path for line and area fill
+  const linePath = points.length > 0 ? getCurvePath(points) : "";
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingY} L ${points[0].x} ${chartHeight - paddingY} Z`
+      : "";
+
+  const activeIdx = selectedPointIndex !== null ? selectedPointIndex : points.length - 1;
+  const activePoint = points[activeIdx] || { amount: 0, label: "" };
+
+  // Dedicated card details based on selected/active point
+  let cardAmount = activePoint.amount;
+  let cardLabel = "";
+  let cardSubtext = "";
+
+  if (spendingPeriod === "daily") {
+    cardLabel = "Daily Spent";
+    const isToday = activeIdx === points.length - 1;
+    const dateObj = dailyData[activeIdx]?.date;
+    cardSubtext = isToday
+      ? "Today"
+      : dateObj
+        ? dateObj.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+        : "";
+  } else if (spendingPeriod === "weekly") {
+    cardLabel = "Weekly Spent";
+    const isThisWeek = activeIdx === points.length - 1;
+    cardSubtext = isThisWeek ? `This Week (${activePoint.label})` : activePoint.label;
+  } else {
+    cardLabel = "Monthly Spent";
+    const isThisMonth = activeIdx === points.length - 1;
+    const yearVal = monthlyData[activeIdx]?.year;
+    cardSubtext = isThisMonth ? `This Month (${activePoint.label})` : `${activePoint.label} ${yearVal}`;
   }
 
   function handleToggleTheme() {
@@ -213,23 +375,6 @@ export default function MePage() {
           </div>
         </section>
 
-        {/* Allocation & Overflow Settings */}
-        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40 space-y-3">
-          <div className="flex items-center gap-2">
-            <BsGear className="h-4 w-4 text-emerald-400" />
-            <h2 className="text-sm font-semibold text-zinc-200">Allocation & Overflow Settings</h2>
-          </div>
-          <div className="space-y-2 pt-1">
-            <div className="pt-1">
-              <StashSelectCard
-                label="Default Overflow Target Stash"
-                selectedSubId={overflowSubId}
-                categories={categories}
-                onSelect={(subId) => handleSaveOverflowSetting(subId)}
-              />
-            </div>
-          </div>
-        </section>
 
         {/* Pay Later Summary */}
         {/* {activePayLaters > 0 && (
@@ -252,6 +397,147 @@ export default function MePage() {
           </section>
         )} */}
 
+        {/* Spending Dashboard Section */}
+        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Spending Dashboard
+            </span>
+            <div className="flex bg-zinc-950 p-0.5 rounded-lg border border-zinc-800/50">
+              {(["daily", "weekly", "monthly"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    setSpendingPeriod(p);
+                    setSelectedPointIndex(null);
+                  }}
+                  className={`px-2.5 py-1 text-[10px] font-bold rounded-md capitalize transition-colors ${
+                    spendingPeriod === p
+                      ? "bg-emerald-500 text-zinc-950 font-black"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dedicated Card for amount spent */}
+          <div className="rounded-xl bg-zinc-950 p-4 border border-zinc-800/40 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                {cardLabel}
+              </p>
+              <p className="mt-1 text-2xl font-black tabular-nums text-zinc-100">
+                {formatCurrency(cardAmount)}
+              </p>
+            </div>
+            {cardSubtext && (
+              <span className="inline-flex items-center rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-semibold text-zinc-300 border border-zinc-800/40">
+                {cardSubtext}
+              </span>
+            )}
+          </div>
+
+          {/* Curve Line Gradient Chart */}
+          <div className="relative w-full h-[140px] mt-2">
+            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--color-emerald-500)" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="var(--color-emerald-500)" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              {/* Grid lines */}
+              <line
+                x1={paddingX}
+                y1={chartHeight - paddingY}
+                x2={chartWidth - paddingX}
+                y2={chartHeight - paddingY}
+                stroke="rgba(63, 63, 70, 0.3)"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+              <line
+                x1={paddingX}
+                y1={paddingY}
+                x2={chartWidth - paddingX}
+                y2={paddingY}
+                stroke="rgba(63, 63, 70, 0.3)"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+
+              {/* Gradient Area Fill */}
+              {points.length > 0 && (
+                <path d={areaPath} fill="url(#chartGradient)" />
+              )}
+
+              {/* Curve Line */}
+              {points.length > 0 && (
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="var(--color-emerald-500)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+              )}
+
+              {/* Interactive Dots */}
+              {points.map((pt, i) => {
+                const isActive = i === activeIdx;
+                return (
+                  <g key={i} className="cursor-pointer" onClick={() => setSelectedPointIndex(i)}>
+                    <circle cx={pt.x} cy={pt.y} r={16} fill="transparent" />
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={isActive ? 5 : 3}
+                      fill={isActive ? "var(--color-emerald-500)" : "rgb(63, 63, 70)"}
+                      stroke={isActive ? "rgba(255, 255, 100, 0.4)" : "none"}
+                      strokeWidth={isActive ? 4 : 0}
+                      className="transition-all duration-200"
+                    />
+                    <text
+                      x={pt.x}
+                      y={chartHeight - 4}
+                      textAnchor="middle"
+                      fontSize="8"
+                      fontWeight="bold"
+                      fill={isActive ? "var(--color-emerald-500)" : "rgb(113, 113, 122)"}
+                      className="transition-colors duration-200 pointer-events-none uppercase"
+                    >
+                      {pt.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </section>
+
+        {/* Allocation & Overflow Settings */}
+        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40 space-y-3">
+          <div className="flex items-center gap-2">
+            <BsGear className="h-4 w-4 text-emerald-400" />
+            <h2 className="text-sm font-semibold text-zinc-200">Allocation & Overflow Settings</h2>
+          </div>
+          <div className="space-y-2 pt-1">
+            <div className="pt-1">
+              <StashSelectCard
+                label="Default Overflow Target Stash"
+                selectedSubId={overflowSubId}
+                categories={categories}
+                onSelect={(subId) => handleSaveOverflowSetting(subId)}
+              />
+            </div>
+          </div>
+        </section>
+        
         {/* ── Appearance Section ── */}
         <section className="rounded-2xl bg-zinc-900/60 border border-zinc-800/40 overflow-hidden">
           <div className="px-4 py-3 border-b border-zinc-800/30">
