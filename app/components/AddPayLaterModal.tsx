@@ -1,17 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BsCalendarEvent, BsCheckLg, BsCreditCard2Back, BsPlusLg, BsX } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 import { dateFormatter } from "../lib/dateFormatter";
+
+export interface PayLaterFormData {
+  id?: string;
+  name: string;
+  totalAmount: number;
+  interestRate?: number;
+  frequency?: string;
+  dueDate?: string;
+  paymentType?: string;
+  months?: number;
+  monthlyPayment?: number;
+}
 
 interface AddPayLaterModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialItem?: PayLaterFormData | null;
 }
 
-export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalProps) {
+export function AddPayLaterModal({ open, onClose, onSuccess, initialItem }: AddPayLaterModalProps) {
+  const isEdit = !!initialItem?.id;
+
   const [name, setName] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [interestRate, setInterestRate] = useState("0");
@@ -24,6 +39,28 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
   const [paymentType, setPaymentType] = useState<"one_time" | "installment">("installment");
   const [months, setMonths] = useState(3);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && initialItem) {
+      setName(initialItem.name || "");
+      setTotalAmount(String(initialItem.totalAmount || ""));
+      setInterestRate(String(initialItem.interestRate ?? "0"));
+      setFrequency(initialItem.frequency || "Monthly");
+      setDueDate(initialItem.dueDate ? initialItem.dueDate.split("T")[0] : new Date().toISOString().split("T")[0]);
+      setPaymentType((initialItem.paymentType as "one_time" | "installment") || "installment");
+      setMonths(initialItem.months || 3);
+    } else if (open) {
+      setName("");
+      setTotalAmount("");
+      setInterestRate("0");
+      setFrequency("Monthly");
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setDueDate(d.toISOString().split("T")[0]);
+      setPaymentType("installment");
+      setMonths(3);
+    }
+  }, [open, initialItem]);
 
   if (!open) return null;
 
@@ -43,35 +80,58 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
 
     setLoading(true);
     try {
-      const res = await fetch("/api/pay-later", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          totalAmount: parsedTotal,
-          interestRate: parsedRate,
-          frequency,
-          dueDate,
-          paymentType,
-          months: effectiveMonths,
-        }),
-      });
+      if (isEdit && initialItem?.id) {
+        const res = await fetch("/api/pay-later", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payLaterId: initialItem.id,
+            name: name.trim(),
+            totalAmount: parsedTotal,
+            interestRate: parsedRate,
+            frequency,
+            dueDate,
+            paymentType,
+            months: effectiveMonths,
+            monthlyPayment: autoCalculatedRepayment,
+          }),
+        });
 
-      if (res.ok) {
-        setName("");
-        setTotalAmount("");
-        onSuccess();
-        onClose();
+        if (res.ok) {
+          onSuccess();
+          onClose();
+        }
+      } else {
+        const res = await fetch("/api/pay-later", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            totalAmount: parsedTotal,
+            interestRate: parsedRate,
+            frequency,
+            dueDate,
+            paymentType,
+            months: effectiveMonths,
+          }),
+        });
+
+        if (res.ok) {
+          setName("");
+          setTotalAmount("");
+          onSuccess();
+          onClose();
+        }
       }
     } catch (err) {
-      console.error("Create pay later error:", err);
+      console.error("Save pay later error:", err);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[70] flex items-end justify-center" role="dialog" aria-modal="true">
       <button
         type="button"
         aria-label="Close"
@@ -88,7 +148,9 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BsCreditCard2Back className="h-5 w-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-zinc-100">Add Pay Later</h2>
+            <h2 className="text-lg font-bold text-zinc-100">
+              {isEdit ? "Edit Pay Later" : "Add Pay Later"}
+            </h2>
           </div>
           <button
             type="button"
@@ -161,7 +223,7 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
             </div>
           </div>
 
-          {/* Installment Months selector (Shopee PayLater style) */}
+          {/* Installment Months selector */}
           {paymentType === "installment" && (
             <div>
               <span className="text-xs text-zinc-400 font-medium">Installment Duration</span>
@@ -250,7 +312,7 @@ export function AddPayLaterModal({ open, onClose, onSuccess }: AddPayLaterModalP
             disabled={!isValid || loading}
             className="mt-2 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:opacity-30"
           >
-            {loading ? "Creating..." : "Save Pay Later Item"}
+            {loading ? "Saving..." : isEdit ? "Save Changes" : "Save Pay Later Item"}
           </button>
         </form>
       </div>
