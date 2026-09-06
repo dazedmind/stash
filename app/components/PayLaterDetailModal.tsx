@@ -8,13 +8,14 @@ import {
   BsPencil,
   BsTrash,
   BsX,
-  BsCheck2,
 } from "react-icons/bs";
 import { formatCurrency } from "../lib/finance";
 import { useApp } from "../lib/store";
 import { ConfirmModal } from "./ConfirmModal";
 import { PayInstallmentSheet } from "./PayInstallmentSheet";
+import { AddPayLaterModal } from "./AddPayLaterModal";
 import { dateFormatter } from "../lib/dateFormatter";
+import { getCutoffForDate } from "../lib/cutoff";
 
 export interface PayLaterInstallmentItem {
   id: string;
@@ -65,24 +66,15 @@ export function PayLaterDetailModal({
   onClose,
   onRefresh,
 }: PayLaterDetailModalProps) {
-  const { refreshData } = useApp();
+  const { refreshData, salaryCutoffs } = useApp();
   const [installments, setInstallments] = useState<PayLaterInstallmentItem[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Renaming State
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editingName, setEditingName] = useState("");
-  const [isSavingName, setIsSavingName] = useState(false);
-
-  // Edit Details panel
-  const [isEditingDetails, setIsEditingDetails] = useState(false);
-  const [editTotalAmount, setEditTotalAmount] = useState("");
-  const [editMonthlyPayment, setEditMonthlyPayment] = useState("");
-  const [editDueDate, setEditDueDate] = useState("");
-  const [isSavingDetails, setIsSavingDetails] = useState(false);
+  // Reused Add/Edit Modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   // Pay installment sheet
   const [pendingInstallment, setPendingInstallment] = useState<PayLaterInstallmentItem | null>(null);
@@ -91,12 +83,7 @@ export function PayLaterDetailModal({
     if (open && item) {
       setInstallments(item.installments || []);
       setShowDeleteConfirm(false);
-      setIsEditingName(false);
-      setEditingName(item.name);
-      setIsEditingDetails(false);
-      setEditTotalAmount(String(item.totalAmount));
-      setEditMonthlyPayment(String(item.monthlyPayment));
-      setEditDueDate(item.dueDate);
+      setEditModalOpen(false);
       setPendingInstallment(null);
       requestAnimationFrame(() => setVisible(true));
     } else {
@@ -185,53 +172,6 @@ export function PayLaterDetailModal({
     await handleTogglePaid(installmentId, 0, undefined);
   }
 
-  async function handleSaveRename() {
-    const trimmed = editingName.trim();
-    if (!trimmed || isSavingName || !item) return;
-
-    setIsSavingName(true);
-    try {
-      const res = await fetch("/api/pay-later", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ payLaterId: item.id, name: trimmed }),
-      });
-      if (res.ok) {
-        setIsEditingName(false);
-        onRefresh();
-      }
-    } catch (err) {
-      console.error("Rename Pay Later error:", err);
-    } finally {
-      setIsSavingName(false);
-    }
-  }
-
-  async function handleSaveDetails() {
-    if (!item || isSavingDetails) return;
-    setIsSavingDetails(true);
-    try {
-      const res = await fetch("/api/pay-later", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payLaterId: item.id,
-          totalAmount: Number(editTotalAmount.replace(/\D/g, "")),
-          monthlyPayment: Number(editMonthlyPayment.replace(/\D/g, "")),
-          dueDate: editDueDate,
-        }),
-      });
-      if (res.ok) {
-        setIsEditingDetails(false);
-        onRefresh();
-      }
-    } catch (err) {
-      console.error("Edit Pay Later details error:", err);
-    } finally {
-      setIsSavingDetails(false);
-    }
-  }
-
   async function handleConfirmDelete() {
     if (!item) return;
     setIsDeleting(true);
@@ -273,38 +213,7 @@ export function PayLaterDetailModal({
                 <BsCreditCard2Back className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                {isEditingName ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleSaveRename(); }}
-                      className="min-h-[34px] w-full rounded-xl bg-zinc-900 px-2.5 text-sm font-bold text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSaveRename}
-                      disabled={isSavingName}
-                      className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400"
-                    >
-                      Save
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-zinc-100 truncate">{item.name}</h2>
-                    <button
-                      type="button"
-                      onClick={() => { setEditingName(item.name); setIsEditingName(true); }}
-                      className="text-zinc-400 hover:text-zinc-100 transition-colors"
-                      title="Rename"
-                    >
-                      <BsPencil className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-
+                <h2 className="text-lg font-bold text-zinc-100 truncate">{item.name}</h2>
                 <p className="text-xs text-zinc-400 font-medium mt-0.5">
                   {item.frequency} • {item.months} {item.months === 1 ? "Payment" : "Installments"}
                   {item.interestRate > 0 && ` • ${item.interestRate}% interest`}
@@ -316,12 +225,8 @@ export function PayLaterDetailModal({
               {/* Edit Details Button */}
               <button
                 type="button"
-                onClick={() => setIsEditingDetails((v) => !v)}
-                className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
-                  isEditingDetails
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-zinc-900 text-zinc-500 hover:text-zinc-200"
-                }`}
+                onClick={() => setEditModalOpen(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-zinc-400 hover:text-emerald-400 transition-colors"
                 title="Edit Details"
               >
                 <BsPencil className="h-3.5 w-3.5" />
@@ -343,70 +248,6 @@ export function PayLaterDetailModal({
               </button>
             </div>
           </header>
-
-          {/* ── Edit Details Panel ── */}
-          {isEditingDetails && (
-            <div className="mt-4 rounded-2xl bg-zinc-900/80 p-4 border border-zinc-800/60 space-y-4 animate-fade-in">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Edit Details</h3>
-
-              <label className="block">
-                <span className="text-xs text-zinc-400 font-medium ml-1">Total Amount</span>
-                <div className="relative mt-1">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₱</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={editTotalAmount}
-                    onChange={(e) => setEditTotalAmount(e.target.value.replace(/\D/g, ""))}
-                    className="w-full rounded-xl bg-zinc-950 pl-8 pr-4 py-2.5 text-sm font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="text-xs text-zinc-400 font-medium ml-1">Monthly Payment</span>
-                <div className="relative mt-1">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">₱</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={editMonthlyPayment}
-                    onChange={(e) => setEditMonthlyPayment(e.target.value.replace(/\D/g, ""))}
-                    className="w-full rounded-xl bg-zinc-950 pl-8 pr-4 py-2.5 text-sm font-bold tabular-nums text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="text-xs text-zinc-400 font-medium ml-1">Due Date</span>
-                <input
-                  type="date"
-                  value={editDueDate}
-                  onChange={(e) => setEditDueDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500 [color-scheme:dark]"
-                />
-              </label>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setIsEditingDetails(false)}
-                  className="flex-1 rounded-xl bg-zinc-800 py-2.5 text-xs font-bold text-zinc-300 hover:bg-zinc-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveDetails}
-                  disabled={isSavingDetails}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-500 py-2.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
-                >
-                  <BsCheck2 className="h-4 w-4" />
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Financial Progress Banner */}
           <div className="mt-4 rounded-2xl bg-zinc-900/60 p-4">
@@ -462,6 +303,7 @@ export function PayLaterDetailModal({
               ) : (
                 sortedInstallments.map((ins) => {
                   const isPaid = ins.isPaid === 1;
+                  const cutoff = getCutoffForDate(ins.dueDate, salaryCutoffs);
 
                   return (
                     <div
@@ -489,9 +331,13 @@ export function PayLaterDetailModal({
                           <p className={`text-xs font-semibold ${isPaid ? "line-through text-zinc-500" : "text-zinc-100"}`}>
                             {ins.title}
                           </p>
-                          <p className="text-[10px] text-zinc-400 mt-0.5">
-                            Due on {dateFormatter(new Date(ins.dueDate))} {isPaid && "• Paid ✓"}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="text-[10px] text-zinc-400">
+                              Due on {dateFormatter(new Date(ins.dueDate))}
+                            </span>
+                            
+                            {isPaid && <span className="text-[10px] text-zinc-500">• Paid</span>}
+                          </div>
                         </div>
                       </div>
 
@@ -508,6 +354,17 @@ export function PayLaterDetailModal({
           </section>
         </div>
       </div>
+
+      {/* Reused Add/Edit Modal */}
+      <AddPayLaterModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        initialItem={item}
+        onSuccess={() => {
+          setEditModalOpen(false);
+          onRefresh();
+        }}
+      />
 
       {/* Pay Installment Sheet */}
       <PayInstallmentSheet

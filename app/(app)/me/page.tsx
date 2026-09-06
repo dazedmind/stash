@@ -12,11 +12,13 @@ import {
   BsWallet2,
   BsExclamationTriangle,
   BsTrash,
+  BsCalendarCheck,
 } from "react-icons/bs";
 import { AuthModal } from "../../components/AuthModal";
 import { StashSelectCard } from "../../components/StashSelectCard";
 import { formatCurrency } from "../../lib/finance";
 import { useApp } from "../../lib/store";
+import { parseCutoffs } from "../../lib/cutoff";
 
 function getCurvePath(points: { x: number; y: number }[]) {
   if (points.length === 0) return "";
@@ -62,12 +64,50 @@ export default function MePage() {
     categories,
     allSubcategories,
     refreshData,
+    salaryCutoffs,
+    updateSalaryCutoffs,
   } = useApp();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [transactions, setTransactions] = useState<TransactionLog[]>([]);
   const [payLaters, setPayLaters] = useState<PayLaterItem[]>([]);
   const [overflowSubId, setOverflowSubId] = useState<string>("");
+
+  // Salary Cutoff Settings
+  const [cutoffPreset, setCutoffPreset] = useState<string>(() => {
+    const key = salaryCutoffs.join(",");
+    if (key === "5,20" || key === "10,25" || key === "15,31") return key;
+    return "custom";
+  });
+  const [customCutoffText, setCustomCutoffText] = useState(() => salaryCutoffs.join(", "));
+  const [cutoffSaved, setCutoffSaved] = useState(false);
+
+  useEffect(() => {
+    const key = salaryCutoffs.join(",");
+    if (key === "5,20" || key === "10,25" || key === "15,31") {
+      setCutoffPreset(key);
+    } else {
+      setCutoffPreset("custom");
+    }
+    setCustomCutoffText(salaryCutoffs.join(", "));
+  }, [salaryCutoffs]);
+
+  function handlePresetChange(val: string) {
+    setCutoffPreset(val);
+    if (val !== "custom") {
+      const days = val.split(",").map(Number);
+      updateSalaryCutoffs(days);
+      setCutoffSaved(true);
+      setTimeout(() => setCutoffSaved(false), 2000);
+    }
+  }
+
+  function handleSaveCustomCutoff() {
+    const parsed = parseCutoffs(customCutoffText);
+    updateSalaryCutoffs(parsed);
+    setCutoffSaved(true);
+    setTimeout(() => setCutoffSaved(false), 2000);
+  }
 
   // Delete account
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -535,6 +575,56 @@ export default function MePage() {
                 onSelect={(subId) => handleSaveOverflowSetting(subId)}
               />
             </div>
+          </div>
+        </section>
+
+        {/* Salary Cutoff Dates */}
+        <section className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/40 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BsCalendarCheck className="h-4 w-4 text-emerald-400" />
+              <h2 className="text-sm font-semibold text-zinc-200">Salary Cutoff Dates</h2>
+            </div>
+            {cutoffSaved && (
+              <span className="text-[10px] font-bold text-emerald-400">Saved ✓</span>
+            )}
+          </div>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-xs text-zinc-400 font-medium">Cutoff Schedule</label>
+              <select
+                value={cutoffPreset}
+                onChange={(e) => handlePresetChange(e.target.value)}
+                className="mt-1.5 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-xs font-medium text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+              >
+                <option value="5,20">5th & 20th of the month</option>
+                <option value="10,25">10th & 25th of the month</option>
+                <option value="15,31">15th & End of month</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            {cutoffPreset === "custom" && (
+              <div className="space-y-2">
+                <label className="block">
+                  <span className="text-xs text-zinc-400 font-medium">Cutoff Days (comma-separated, 1–31)</span>
+                  <input
+                    type="text"
+                    value={customCutoffText}
+                    onChange={(e) => setCustomCutoffText(e.target.value)}
+                    placeholder="e.g. 5, 20"
+                    className="mt-1.5 min-h-[44px] w-full rounded-xl bg-zinc-900 px-3 text-xs font-medium text-zinc-100 outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomCutoff}
+                  className="rounded-xl bg-emerald-500 px-3.5 py-2 text-xs font-bold text-zinc-950 transition-all hover:bg-emerald-400 active:scale-95"
+                >
+                  Save Cutoffs
+                </button>
+              </div>
+            )}
           </div>
         </section>
         

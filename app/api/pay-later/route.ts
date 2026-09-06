@@ -124,13 +124,17 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const { installmentId, isPaid, subCategoryId, payLaterId, name, totalAmount, monthlyPayment, dueDate } = body;
 
-    // Handle Pay Later item field updates (name, amounts, dueDate)
+    // Handle Pay Later item field updates (name, amounts, dueDate, etc.)
     if (payLaterId && !installmentId) {
       const updatePayload: Record<string, any> = {};
       if (name && typeof name === "string") updatePayload.name = name.trim();
       if (totalAmount !== undefined) updatePayload.totalAmount = Number(totalAmount);
       if (monthlyPayment !== undefined) updatePayload.monthlyPayment = Number(monthlyPayment);
       if (dueDate && typeof dueDate === "string") updatePayload.dueDate = dueDate;
+      if (body.interestRate !== undefined) updatePayload.interestRate = Number(body.interestRate);
+      if (body.frequency && typeof body.frequency === "string") updatePayload.frequency = body.frequency;
+      if (body.paymentType && typeof body.paymentType === "string") updatePayload.paymentType = body.paymentType;
+      if (body.months !== undefined) updatePayload.months = Number(body.months);
 
       if (Object.keys(updatePayload).length === 0) {
         return Response.json({ error: "No fields to update" }, { status: 400 });
@@ -140,6 +144,57 @@ export async function PATCH(req: Request) {
         .update(payLaters)
         .set(updatePayload)
         .where(and(eq(payLaters.id, payLaterId), eq(payLaters.userId, user.id)));
+
+      // Check existing installments
+      const existingInstallments = await db
+        .select()
+        .from(payLaterInstallments)
+        .where(and(eq(payLaterInstallments.payLaterId, payLaterId), eq(payLaterInstallments.userId, user.id)));
+
+      const paidCount = existingInstallments.filter((ins) => ins.isPaid === 1).length;
+
+      // If nothing has been paid yet, regenerate installments to match the updated configuration:
+      if (paidCount === 0 && (totalAmount !== undefined || body.months !== undefined || body.frequency !== undefined || dueDate !== undefined)) {
+        await db
+          .delete(payLaterInstallments)
+          .where(and(eq(payLaterInstallments.payLaterId, payLaterId), eq(payLaterInstallments.userId, user.id)));
+
+        const parsedTotal = totalAmount !== undefined ? Number(totalAmount) : 0;
+        const parsedRate = body.interestRate !== undefined ? Number(body.interestRate) : 0;
+        const totalWithInterest = Math.round(parsedTotal * (1 + parsedRate / 100));
+        const parsedMonths = body.months !== undefined ? Math.max(1, Number(body.months)) : 1;
+        const isOneTime = body.paymentType === "one_time" || parsedMonths === 1;
+        const numMonths = isOneTime ? 1 : parsedMonths;
+        const calcMonthly = monthlyPayment !== undefined ? Number(monthlyPayment) : Math.round(totalWithInterest / numMonths);
+        const freq = body.frequency || "Monthly";
+        const baseDate = new Date(dueDate || Date.now());
+
+        for (let i = 0; i < numMonths; i++) {
+          const insDueDate = new Date(baseDate);
+          if (freq === "Weekly") {
+            insDueDate.setDate(baseDate.getDate() + i * 7);
+          } else if (freq === "Bi-weekly") {
+            insDueDate.setDate(baseDate.getDate() + i * 14);
+          } else {
+            insDueDate.setMonth(baseDate.getMonth() + i);
+          }
+          const formattedDueDate = insDueDate.toISOString().split("T")[0];
+          const title = isOneTime ? "Full Payment" : `Payment ${i + 1} of ${numMonths}`;
+          const currentAmount = i === numMonths - 1
+            ? totalWithInterest - calcMonthly * (numMonths - 1)
+            : calcMonthly;
+
+          await db.insert(payLaterInstallments).values({
+            id: generateId(),
+            payLaterId,
+            userId: user.id,
+            title,
+            amount: currentAmount,
+            dueDate: formattedDueDate,
+            isPaid: 0,
+          });
+        }
+      }
 
       return Response.json({ success: true });
     }

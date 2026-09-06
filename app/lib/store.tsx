@@ -34,6 +34,7 @@ import {
   type SubCategory,
   type Subscription,
 } from "./finance";
+import { DEFAULT_SALARY_CUTOFFS, parseCutoffs, serializeCutoffs } from "./cutoff";
 
 interface UserProfile {
   id: string;
@@ -112,6 +113,8 @@ interface AppContextValue {
   subscriptions: Subscription[];
   addSubscription: (sub: Omit<Subscription, "id">) => Promise<void>;
   removeSubscription: (id: string) => Promise<void>;
+  salaryCutoffs: number[];
+  updateSalaryCutoffs: (cutoffs: number[]) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -123,6 +126,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [guestMonthlyIncome, setGuestMonthlyIncome] = useState(0);
   const [guestTotalIncome, setGuestTotalIncome] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [salaryCutoffs, setSalaryCutoffsState] = useState<number[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("stash_salary_cutoffs");
+      if (saved) return parseCutoffs(saved);
+    }
+    return DEFAULT_SALARY_CUTOFFS;
+  });
+
+  const updateSalaryCutoffs = useCallback((newCutoffs: number[]) => {
+    const valid = parseCutoffs(serializeCutoffs(newCutoffs));
+    setSalaryCutoffsState(valid);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("stash_salary_cutoffs", serializeCutoffs(valid));
+    }
+  }, []);
 
   const fetchFinanceData = useCallback(async () => {
     try {
@@ -599,12 +617,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMonthlyIncome,
       addSubscription,
       removeSubscription,
+      salaryCutoffs,
+      updateSalaryCutoffs,
     };
   }, [
     user,
     isLoading,
     categories,
     subscriptions,
+    salaryCutoffs,
+    updateSalaryCutoffs,
     guestMonthlyIncome,
     guestTotalIncome,
     login,
