@@ -227,12 +227,12 @@ export default function PayLaterPage() {
           <div className="rounded-2xl bg-zinc-900/60 p-4 border border-zinc-800/30">
             <div className="flex items-center justify-between">
               <p className="text-xs text-zinc-500 font-medium">Payment Next Cutoff</p>
+            </div>
+            <p className="flex items-end gap-2 mt-1 text-xl font-bold tabular-nums text-zinc-100">
+              {formatCurrency(activeCutoffTotalDue)}
               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                 {activeDisplayCutoff.shortLabel} 
               </span>
-            </div>
-            <p className="mt-1 text-xl font-bold tabular-nums text-zinc-100">
-              {formatCurrency(activeCutoffTotalDue)}
             </p>
             {/* <p className="mt-1 text-[10px] text-zinc-400 font-medium">
               {activeDisplayCutoff.periodLabel}
