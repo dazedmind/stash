@@ -32,10 +32,16 @@ export async function GET(req: Request) {
       .limit(limitVal);
 
     const formattedLogs = logs.map((log) => {
-      let parsedDetails: Record<string, number> | null = null;
+      let parsedDetails: any = null;
+      let tag: string | null = null;
       if (log.details) {
         try {
           parsedDetails = JSON.parse(log.details);
+          if (parsedDetails && typeof parsedDetails === "object") {
+            if ("tag" in parsedDetails && typeof parsedDetails.tag === "string") {
+              tag = parsedDetails.tag;
+            }
+          }
         } catch {
           parsedDetails = null;
         }
@@ -48,7 +54,8 @@ export async function GET(req: Request) {
         source: log.source,
         description: log.description,
         subCategoryName: log.subCategoryName || null,
-        breakdown: parsedDetails,
+        breakdown: parsedDetails && !tag ? parsedDetails : null,
+        tag,
         createdAt: log.createdAt,
       };
     });

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BsArrowLeftRight, BsClockHistory, BsDashLg, BsEye, BsEyeSlash, BsPlusLg } from "react-icons/bs";
 
 import { CategoryIcon } from "../components/CategoryIcon";
+import { ExpenseRecordCard } from "../components/ExpenseRecordCard";
 import { ExpenseSheet } from "../components/ExpenseSheet";
 import { IncomeSheet } from "../components/IncomeSheet";
 import { StashCard } from "../components/StashCard";
@@ -19,6 +20,7 @@ interface TransactionLog {
   type: "income" | "expense" | "transfer_internal" | "transfer_sub";
   amount: number;
   source: string | null;
+  tag?: string | null;
   description: string | null;
   subCategoryName: string | null;
   breakdown: Record<string, number> | null;
@@ -137,7 +139,7 @@ export default function HomePage() {
         </section>
 
         {/* Budget Categories Bar */}
-        <section className="rounded-2xl bg-zinc-900/60 p-4">
+        <section className="">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-zinc-200">Budget Categories</h2>
             {homescreenCategories.length > 3 && (
@@ -150,11 +152,11 @@ export default function HomePage() {
               <div
                 key={cat.id}
                 onClick={() => setSelectedCategoryModal(cat)}
-                className="snap-start shrink-0 w-[calc(33.333%-0.45rem)] cursor-pointer rounded-xl bg-zinc-950/70 p-2 transition-colors hover:bg-zinc-950 flex items-center gap-2"
+                className="snap-start shrink-0 w-[calc(33.333%-0.45rem)] cursor-pointer rounded-xl bg-zinc-900/60 p-2 transition-colors hover:bg-zinc-900 flex items-center gap-2"
               >
                 <div className="flex flex-col justify-center text-center items-center gap-2 w-full p-2">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-emerald-400 font-bold">
-                    <CategoryIcon iconName={cat.icon} className="h-4 w-4" />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center text-emerald-400 font-bold">
+                    <CategoryIcon iconName={cat.icon} className="h-5 w-5" />
                   </div>
                   <span className="flex flex-col space-y-0.5 w-full">
                     <div className="text-xs font-medium text-zinc-400">
@@ -193,167 +195,44 @@ export default function HomePage() {
         </section>
 
         {/* Recent Transaction History */}
-        <section className="rounded-2xl bg-zinc-900/60 p-4">
-          <div className="flex items-center justify-between">
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <BsClockHistory className="h-4 w-4 text-emerald-400" />
-              <h2 className="text-sm font-semibold text-zinc-200">Recent Activity</h2>
+              {/* <BsClockHistory className="h-4 w-4 text-emerald-400" /> */}
+              <h2 className="text-sm font-semibold text-zinc-200">Recent Transactions</h2>
             </div>
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
-            >
-              See all
-            </button>
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/expenses"
+                className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                See all expense
+              </Link>
+              <span className="text-zinc-700 text-xs">•</span>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(true)}
+                className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                See all
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 space-y-2.5">
+          <div className="space-y-2">
             {recentTransactions.length === 0 ? (
-              <p className="py-3 text-center text-xs text-zinc-500">No recent transactions</p>
+              <div className="rounded-2xl bg-zinc-900/40 p-6 text-center border border-zinc-800/30">
+                <p className="text-xs text-zinc-500">No recent transactions</p>
+              </div>
             ) : (
-              recentTransactions.map((tx) => {
-                const isIncome = tx.type === "income";
-                const isExpense = tx.type === "expense";
-                const isInternalTransfer = tx.type === "transfer_internal";
-                const isSubTransfer = tx.type === "transfer_sub";
-
-                const dateStr = new Date(tx.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
-
-                const isToCashInternal =
-                  tx.source === "digital_to_cash" || tx.description?.toLowerCase().includes("to cash");
-                const isDigitalSource = tx.source === "digital" || tx.source === "digital_to_cash";
-
-                const renderTitle = () => {
-                  if (isIncome) return "Income Deposit";
-                  if (isExpense) return `Expense: ${tx.subCategoryName || "Stash"}`;
-                  if (isSubTransfer && tx.description && tx.description.includes(" to ")) {
-                    const parts = tx.description.split(" to ");
-                    return (
-                      <span>
-                        <strong className="font-bold text-zinc-100">{parts[0]}</strong>{" "}
-                        <span className="font-normal text-zinc-400 text-xs">to</span>{" "}
-                        <strong className="font-bold text-zinc-100">{parts[1]}</strong>
-                      </span>
-                    );
-                  }
-                  return tx.description || "Stash Transfer";
-                };
-
-                return (
-                  <div
-                    key={tx.id}
-                    onClick={() => setHistoryOpen(true)}
-                    className="cursor-pointer rounded-xl bg-zinc-950/70 p-3 transition-colors hover:bg-zinc-950"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <div
-                          className={`flex shrink-0 h-8 w-8 items-center justify-center rounded-full font-bold mt-0.5 ${
-                            isIncome
-                              ? "bg-emerald-500/10 text-emerald-400"
-                              : isExpense
-                                ? "bg-rose-500/10 text-rose-400"
-                                : "bg-zinc-800 text-zinc-300"
-                          }`}
-                        >
-                          {isIncome ? (
-                            <BsPlusLg className="h-3.5 w-3.5" />
-                          ) : isExpense ? (
-                            <BsDashLg className="h-3.5 w-3.5" />
-                          ) : (
-                            <BsArrowLeftRight className="h-3.5 w-3.5" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <p className="font-semibold text-xs text-zinc-100 leading-snug">
-                            {renderTitle()}
-                          </p>
-
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {/* Direction Pill Badges */}
-                            {isInternalTransfer && (
-                              <div className="inline-flex items-center gap-1">
-                                {isToCashInternal ? (
-                                  <>
-                                    <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
-                                      Digital
-                                    </span>
-                                    <span className="text-xs text-zinc-400 font-bold">→</span>
-                                    <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
-                                      Cash
-                                    </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-[#ffff64] bg-[#ffff64]/10">
-                                      Cash
-                                    </span>
-                                    <span className="text-xs text-zinc-400 font-bold">→</span>
-                                    <span className="text-[10px] font-bold rounded-full px-2 py-0.5 text-green-300 bg-green-300/10">
-                                      Digital
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-                            )}
-
-                            {(isSubTransfer || isExpense) && (
-                              <span
-                                className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                                  isDigitalSource
-                                    ? "text-green-300 bg-green-300/10"
-                                    : "text-[#ffff64] bg-[#ffff64]/10"
-                                }`}
-                              >
-                                {isDigitalSource ? "Digital" : "Cash"}
-                              </span>
-                            )}
-
-                            <span className="text-[10px] text-zinc-400">{dateStr}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <p
-                          className={`text-xs font-bold tabular-nums ${
-                            isIncome
-                              ? "text-emerald-400"
-                              : isExpense
-                                ? "text-rose-400"
-                                : "text-zinc-200"
-                          }`}
-                        >
-                          {isIncome ? "+" : isExpense ? "-" : ""}
-                          {formatCurrency(tx.amount)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {isIncome && tx.breakdown && Object.keys(tx.breakdown).length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1 border-t border-zinc-800/40 pt-2 pl-10">
-                        {Object.entries(tx.breakdown).map(([catName, allocatedAmt]) => (
-                          <span
-                            key={catName}
-                            className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-300"
-                          >
-                            <span className="font-medium text-zinc-400">{catName}:</span>
-                            <span className="font-mono text-emerald-400">
-                              +{formatCurrency(allocatedAmt)}
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
+              recentTransactions.map((tx) => (
+                <ExpenseRecordCard
+                  key={tx.id}
+                  transaction={tx}
+                  onClick={() => setHistoryOpen(true)}
+                  showDate={true}
+                />
+              ))
             )}
           </div>
         </section>

@@ -219,6 +219,26 @@ export async function PATCH(req: Request) {
           .where(and(eq(payLaterInstallments.id, installmentId), eq(payLaterInstallments.userId, user.id)));
 
         if (ins) {
+          // Get parent payLater
+          const [parentPayLater] = await db
+            .select()
+            .from(payLaters)
+            .where(and(eq(payLaters.id, ins.payLaterId), eq(payLaters.userId, user.id)));
+
+          // Get all installments for this payLater to determine installment index and total count
+          const allIns = await db
+            .select()
+            .from(payLaterInstallments)
+            .where(and(eq(payLaterInstallments.payLaterId, ins.payLaterId), eq(payLaterInstallments.userId, user.id)))
+            .orderBy(payLaterInstallments.dueDate);
+
+          const insIndex = allIns.findIndex((item) => item.id === ins.id);
+          const currentNum = insIndex !== -1 ? insIndex + 1 : 1;
+          const totalNum = allIns.length > 0 ? allIns.length : (parentPayLater?.months || 1);
+
+          const payLaterName = parentPayLater?.name || "PayLater";
+          const formattedNote = `PayLater: ${payLaterName} [${currentNum}/${totalNum}]`;
+
           // Deduct from subcategory
           const { subcategories, transactions } = await import("@/db/schema");
           const { sql } = await import("drizzle-orm");
@@ -229,12 +249,6 @@ export async function PATCH(req: Request) {
             .set({ digital: sql`${subcategories.digital} - ${ins.amount}` })
             .where(and(eq(subcategories.id, subCategoryId), eq(subcategories.userId, user.id)));
 
-          // Get sub name for transaction description
-          const [sub] = await db
-            .select()
-            .from(subcategories)
-            .where(and(eq(subcategories.id, subCategoryId), eq(subcategories.userId, user.id)));
-
           await db.insert(transactions).values({
             id: genId(),
             userId: user.id,
@@ -242,8 +256,8 @@ export async function PATCH(req: Request) {
             type: "expense",
             amount: ins.amount,
             source: "digital",
-            description: `Pay Later: ${ins.title}`,
-            details: JSON.stringify({ note: ins.title }),
+            description: formattedNote,
+            details: JSON.stringify({ note: formattedNote, tag: "bills" }),
           });
         }
       }

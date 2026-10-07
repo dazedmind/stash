@@ -66,7 +66,8 @@ interface AppContextValue {
     subCategoryId: string,
     amount: number,
     source: "digital" | "cash",
-    note?: string
+    note?: string,
+    tag?: string
   ) => Promise<void>;
   transferCashDigital: (
     subCategoryId: string,
@@ -259,7 +260,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user, fetchFinanceData]);
 
   const addExpenseAmount = useCallback(
-    async (subCategoryId: string, amount: number, source: "digital" | "cash", note?: string) => {
+    async (
+      subCategoryId: string,
+      amount: number,
+      source: "digital" | "cash",
+      note?: string,
+      tag?: string
+    ) => {
       setCategories((prev) => addExpenseToCategories(prev, subCategoryId, amount, source));
 
       if (user) {
@@ -267,7 +274,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await fetch("/api/finance/expense", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ subCategoryId, amount, source, note }),
+            body: JSON.stringify({ subCategoryId, amount, source, note, tag }),
           });
           await fetchFinanceData();
         } catch (err) {

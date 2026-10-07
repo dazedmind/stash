@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BsCash, BsDashLg, BsJournalText, BsCreditCard } from "react-icons/bs";
+import {
+  BsCash,
+  BsCreditCard,
+  BsJournalText,
+  BsTag,
+} from "react-icons/bs";
+import { EXPENSE_TAGS } from "../lib/expenseTags";
 import { formatCurrency, type SubCategory } from "../lib/finance";
 import { useApp } from "../lib/store";
 import { StashSelectCard } from "./StashSelectCard";
@@ -21,6 +27,7 @@ export function ExpenseSheet({
   const [subCategoryId, setSubCategoryId] = useState<string>("");
   const [source, setSource] = useState<"digital" | "cash">("digital");
   const [amount, setAmount] = useState("");
+  const [selectedTag, setSelectedTag] = useState<string>("food");
   const [note, setNote] = useState("");
   const [visible, setVisible] = useState(false);
 
@@ -28,18 +35,21 @@ export function ExpenseSheet({
     if (open) {
       setAmount("");
       setNote("");
+      setSelectedTag("food");
       setSource("digital");
       const nonSafeSubcategories = allSubcategories.filter((sub) => {
         const cat = categories.find((c) => c.id === sub.categoryId);
         return cat ? !cat.isSafe : true;
       });
-      const defaultId = defaultSubCategoryId || (nonSafeSubcategories.length > 0 ? nonSafeSubcategories[0].id : "");
+      const defaultId =
+        defaultSubCategoryId ||
+        (nonSafeSubcategories.length > 0 ? nonSafeSubcategories[0].id : "");
       setSubCategoryId(defaultId);
       requestAnimationFrame(() => setVisible(true));
     } else {
       setVisible(false);
     }
-  }, [open, defaultSubCategoryId, allSubcategories]);
+  }, [open, defaultSubCategoryId, allSubcategories, categories]);
 
   if (!open) return null;
 
@@ -54,16 +64,21 @@ export function ExpenseSheet({
     : 0;
 
   const parsedAmount = Number.parseInt(amount.replace(/\D/g, ""), 10) || 0;
-  const isValid = parsedAmount > 0 && parsedAmount <= availableBalance && !!subCategoryId;
+  const isValid =
+    parsedAmount > 0 && parsedAmount <= availableBalance && !!subCategoryId;
 
   function handleSubmit() {
     if (!isValid || !subCategoryId) return;
-    addExpenseAmount(subCategoryId, parsedAmount, source, note);
+    addExpenseAmount(subCategoryId, parsedAmount, source, note, selectedTag);
     onClose();
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center"
+      role="dialog"
+      aria-modal="true"
+    >
       <button
         type="button"
         aria-label="Close"
@@ -77,10 +92,14 @@ export function ExpenseSheet({
         className={`relative w-full max-w-lg rounded-t-3xl bg-zinc-950 p-5 shadow-2xl transition-transform duration-200 ease-out ${
           visible ? "translate-y-0" : "translate-y-full"
         }`}
-        style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
+        style={{
+          paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+        }}
       >
+        {/* Drag handle */}
         <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-zinc-800" />
 
+        {/* Old Header */}
         <div className="flex items-center gap-2 text-rose-400">
           <h2 className="text-xl font-semibold text-zinc-100">Deduct Expense</h2>
         </div>
@@ -108,7 +127,7 @@ export function ExpenseSheet({
                 }`}
               >
                 <span className="flex items-center justify-center gap-1">
-                  <BsCreditCard className="w-4 h-4"/>
+                  <BsCreditCard className="w-4 h-4" />
                   Digital ({formatCurrency(selectedSub?.digital || 0)})
                 </span>
               </button>
@@ -122,14 +141,14 @@ export function ExpenseSheet({
                 }`}
               >
                 <span className="flex items-center justify-center gap-1">
-                  <BsCash className="w-4 h-4"/>
+                  <BsCash className="w-4 h-4" />
                   Cash ({formatCurrency(selectedSub?.cash || 0)})
                 </span>
               </button>
             </div>
           </div>
-
-          {/* Expense Amount Input */}
+          
+          {/* Expense Amount Input: simple bold large numbers, no preset amount tags */}
           <label className="block text-center">
             <span className="text-xs text-zinc-400 font-medium">Expense Amount</span>
             <div className="relative mt-2 transition-transform duration-300 focus-within:scale-[1.02]">
@@ -153,6 +172,35 @@ export function ExpenseSheet({
               </p>
             )}
           </label>
+
+          {/* Tag Selector: single row, horizontally scrollable without visible scrollbar, neutral non-color-coded styling */}
+          <div>
+            <span className="text-xs text-zinc-400 font-medium flex items-center gap-1.5">
+              <BsTag className="h-3 w-3 text-zinc-400" /> Expense Tag
+            </span>
+            <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5">
+              {EXPENSE_TAGS.map((tag) => {
+                const Icon = tag.icon;
+                const isSelected = selectedTag === tag.id;
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => setSelectedTag(tag.id)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs transition-colors whitespace-nowrap ${
+                      isSelected
+                        ? "bg-zinc-800 text-zinc-100 font-semibold border border-zinc-600"
+                        : "bg-zinc-900/80 border border-zinc-800/80 text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                    <span>{tag.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
 
           {/* Note Input Field */}
           <div>

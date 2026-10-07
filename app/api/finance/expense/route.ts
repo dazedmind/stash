@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { subCategoryId, source, note } = body;
+    const { subCategoryId, source, note, tag } = body;
     const amount = Number.parseInt(body.amount, 10);
 
     if (!subCategoryId || !Number.isFinite(amount) || amount <= 0) {
@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     }
 
     const description = note?.trim() ? note.trim() : '';
+    const details = JSON.stringify({
+      tag: tag || "other",
+      note: description,
+    });
 
     await db.insert(transactions).values({
       id: generateId(),
@@ -54,6 +58,7 @@ export async function POST(req: Request) {
       amount,
       source: isDigital ? "digital" : "cash",
       description,
+      details,
     });
 
     return Response.json({ success: true });
