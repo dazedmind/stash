@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       type: "expense",
       amount: expenseAmount,
       source: expenseSource,
-      description,
+      description: note || null,
       details,
     });
 
