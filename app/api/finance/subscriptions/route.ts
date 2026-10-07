@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { subscriptions } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { generateId, getAuthenticatedUser } from "@/app/lib/auth";
+import { processDueSubscriptions } from "@/app/lib/subscriptionService";
 
 export async function GET(req: Request) {
   try {
@@ -9,6 +10,12 @@ export async function GET(req: Request) {
     if (!user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const { searchParams } = new URL(req.url);
+    const overflowSubId = searchParams.get("overflowSubId");
+    const clientLocalDate = searchParams.get("clientLocalDate");
+
+    await processDueSubscriptions(user.id, overflowSubId, clientLocalDate);
 
     const data = await db
       .select()
@@ -30,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, amount, billingCycle, billingDate, icon } = body;
+    const { name, amount, billingCycle, billingDate, icon, overflowSubId, clientLocalDate } = body;
 
     const trimmedName = name?.trim();
     if (!trimmedName || !amount || !billingDate) {
@@ -47,6 +54,9 @@ export async function POST(req: Request) {
       billingDate: new Date(billingDate),
       icon: icon || "credit-card",
     });
+
+    // Check if the newly added subscription is already due (e.g. scheduled for today)
+    await processDueSubscriptions(user.id, overflowSubId, clientLocalDate);
 
     return Response.json({ success: true, id: newId });
   } catch (error) {

@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { subcategories, transactions } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/app/lib/auth";
+import { processDueSubscriptions } from "@/app/lib/subscriptionService";
 
 export async function GET(req: Request) {
   try {
@@ -13,6 +14,10 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const limitParam = searchParams.get("limit");
     const limitVal = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 50, 1), 1000) : 50;
+    const overflowSubId = searchParams.get("overflowSubId");
+    const clientLocalDate = searchParams.get("clientLocalDate");
+
+    await processDueSubscriptions(user.id, overflowSubId, clientLocalDate);
 
     const logs = await db
       .select({

@@ -145,7 +145,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const fetchFinanceData = useCallback(async () => {
     try {
-      const res = await fetch("/api/finance/data");
+      const overflowId = typeof window !== "undefined" ? localStorage.getItem("global_overflow_sub_id") || "" : "";
+      const clientLocalDate = typeof window !== "undefined" ? new Date().toLocaleDateString("en-CA") : "";
+      const params = new URLSearchParams();
+      if (overflowId) params.set("overflowSubId", overflowId);
+      if (clientLocalDate) params.set("clientLocalDate", clientLocalDate);
+      const query = params.toString() ? `?${params.toString()}` : "";
+
+      const res = await fetch(`/api/finance/data${query}`);
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
@@ -169,6 +176,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchFinanceData();
+
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchFinanceData();
+      }
+    };
+    window.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      window.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
   }, [fetchFinanceData]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -551,10 +570,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (sub: Omit<Subscription, "id">) => {
       if (user) {
         try {
+          const overflowId = typeof window !== "undefined" ? localStorage.getItem("global_overflow_sub_id") || "" : "";
+          const clientLocalDate = typeof window !== "undefined" ? new Date().toLocaleDateString("en-CA") : "";
           const res = await fetch("/api/finance/subscriptions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(sub),
+            body: JSON.stringify({
+              ...sub,
+              overflowSubId: overflowId,
+              clientLocalDate,
+            }),
           });
           if (res.ok) {
             await fetchFinanceData();

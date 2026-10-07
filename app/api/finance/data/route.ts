@@ -3,6 +3,7 @@ import { categories as categoriesTable, subcategories as subcategoriesTable, sub
 import { eq } from "drizzle-orm";
 import { getAuthenticatedUser } from "@/app/lib/auth";
 import { seedUserDefaultCategories } from "@/app/lib/seedUserCategories";
+import { processDueSubscriptions } from "@/app/lib/subscriptionService";
 
 export async function GET(req: Request) {
   try {
@@ -23,6 +24,13 @@ export async function GET(req: Request) {
         .from(categoriesTable)
         .where(eq(categoriesTable.userId, user.id));
     }
+
+    const { searchParams } = new URL(req.url);
+    const overflowSubId = searchParams.get("overflowSubId");
+    const clientLocalDate = searchParams.get("clientLocalDate");
+
+    // Automatically deduct and advance active subscriptions if due
+    await processDueSubscriptions(user.id, overflowSubId, clientLocalDate);
 
     // Sort categories by displayOrder ascending
     userCategories.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
