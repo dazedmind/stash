@@ -109,9 +109,9 @@ export function ExpenseRecordCard({
               {/* Expense Category Tag Badge */}
               {isExpense && tagDef && (
                 <span
-                  className={`inline-flex items-center gap-1 text-[10px] font-bold rounded-md px-2 py-0.5 border ${tagDef.bgBadge} ${tagDef.borderBadge}`}
+                  className={`inline-flex items-center opacity-80 gap-1 text-[10px] font-bold rounded-full px-2 py-0.5 ${tagDef.bgBadge} ${tagDef.borderBadge}`}
                 >
-                  {TagIcon && <TagIcon className="h-2.5 w-2.5" />}
+                  {/* {TagIcon && <TagIcon className="h-2.5 w-2.5" />} */}
                   <span>{tagDef.label}</span>
                 </span>
               )}
@@ -187,17 +187,17 @@ export function ExpenseRecordCard({
       {/* Income per-category allocation breakdown display */}
       {isIncome && transaction.breakdown && Object.keys(transaction.breakdown).length > 0 && (
         <div className="mt-3 border-t border-zinc-800/40 pt-2.5 pl-12">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          {/* <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             Allocated per budget category:
-          </span>
+          </span> */}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {Object.entries(transaction.breakdown).map(([catName, allocatedAmt]) => (
               <span
                 key={catName}
-                className="inline-flex items-center gap-1 rounded-lg bg-zinc-950 px-2 py-0.5 text-xs text-zinc-300"
+                className="inline-flex items-center gap-1 rounded-lg bg-zinc-900 px-2 py-0.5 text-xs text-zinc-300"
               >
                 <span className="font-medium">{catName}:</span>
-                <span className="font-mono text-emerald-400">
+                <span className="font-medium text-emerald-400">
                   +{formatCurrency(allocatedAmt)}
                 </span>
               </span>
